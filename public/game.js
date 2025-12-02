@@ -16,7 +16,7 @@ const GHOST_SPEED = 18; // frames between moves (slower)
 const SCARED_GHOST_SPEED = 24; // slower when scared
 
 // Game state
-let gameState = 'start';
+let gameState = 'menu'; // Changed from 'start' to 'menu'
 let score = 0;
 let lives = 3;
 let highScore = 0;
@@ -25,6 +25,8 @@ let powerPelletActive = false;
 let powerPelletTimer = 0;
 let isPaused = false;
 let waitingForRespawn = false;
+let soundEnabled = true;
+let difficulty = 'normal';
 const POWER_PELLET_DURATION = 300; // frames
 const POWER_PELLET_RESPAWN_TIME = 600; // frames (10 seconds at 60fps)
 const MAX_POWER_PELLETS = 4;
@@ -150,6 +152,8 @@ class AudioManager {
     }
 
     playSound(soundName) {
+        if (!soundEnabled) return; // Check if sound is enabled
+        
         if (!this.sounds[soundName]) {
             console.warn(`Sound not found: ${soundName}`);
             return;
@@ -179,6 +183,21 @@ class AudioManager {
 }
 
 const audioManager = new AudioManager();
+
+// Difficulty settings
+const difficultySettings = {
+    easy: { kiroSpeed: 6, ghostSpeed: 20, scaredSpeed: 28 },
+    normal: { kiroSpeed: 8, ghostSpeed: 18, scaredSpeed: 24 },
+    hard: { kiroSpeed: 10, ghostSpeed: 14, scaredSpeed: 18 }
+};
+
+function getSpeed(type) {
+    const settings = difficultySettings[difficulty];
+    if (type === 'kiro') return settings.kiroSpeed;
+    if (type === 'ghost') return settings.ghostSpeed;
+    if (type === 'scared') return settings.scaredSpeed;
+    return KIRO_SPEED;
+}
 
 function initGhosts() {
     // Spawn all ghosts in the same row inside the ghost house
@@ -340,7 +359,7 @@ function moveKiro() {
         if (canMove(newX, newY)) {
             kiro.x = newX;
             kiro.y = newY;
-            kiro.moveTimer = KIRO_SPEED;
+            kiro.moveTimer = getSpeed('kiro');
 
             // Collect dots
             const tile = maze[kiro.y][kiro.x];
@@ -404,7 +423,7 @@ function moveGhosts() {
             return;
         }
 
-        const speed = ghost.scared ? SCARED_GHOST_SPEED : GHOST_SPEED;
+        const speed = ghost.scared ? getSpeed('scared') : getSpeed('ghost');
         
         // Special logic for exiting ghost house
         if (ghost.inHouse) {
@@ -757,9 +776,10 @@ function quitToStart() {
     isPaused = false;
     waitingForRespawn = false;
     document.getElementById('pauseMenu').classList.add('hidden');
+    document.getElementById('startScreen').classList.remove('hidden');
     init();
-    gameState = 'start';
-    messageEl.textContent = 'Use arrow keys to move! Press any arrow key to start';
+    gameState = 'menu';
+    messageEl.textContent = '';
 }
 
 // Keyboard controls
@@ -823,20 +843,84 @@ document.addEventListener('keydown', (e) => {
 // Initialize and start
 init();
 audioManager.initAudio();
-messageEl.textContent = 'Use arrow keys to move! Press any arrow key to start';
-loadGameHistory();
 
-// Add refresh button handler
-const refreshBtn = document.getElementById('refreshHistory');
-if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => {
-        loadGameHistory();
-    });
-}
+// Show start screen on load
+document.getElementById('startScreen').classList.remove('hidden');
+
+
+
+// Start screen handlers
+document.getElementById('startGameBtn').addEventListener('click', () => {
+    document.getElementById('startScreen').classList.add('hidden');
+    gameState = 'start';
+    messageEl.textContent = 'Use arrow keys to move! Press any arrow key to start';
+});
+
+document.getElementById('leaderboardBtn').addEventListener('click', showLeaderboard);
+document.getElementById('howToPlayBtn').addEventListener('click', showHowToPlay);
+document.getElementById('settingsBtn').addEventListener('click', showSettings);
+
+// Modal close handlers
+document.getElementById('closeLeaderboardBtn').addEventListener('click', () => {
+    document.getElementById('leaderboardScreen').classList.add('hidden');
+});
+
+document.getElementById('closeHowToPlayBtn').addEventListener('click', () => {
+    document.getElementById('howToPlayScreen').classList.add('hidden');
+});
+
+document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+    document.getElementById('settingsScreen').classList.add('hidden');
+});
+
+// Settings handlers
+document.getElementById('soundToggle').addEventListener('click', function() {
+    soundEnabled = !soundEnabled;
+    this.classList.toggle('active');
+    this.textContent = soundEnabled ? 'ON' : 'OFF';
+});
+
+document.getElementById('difficultySelect').addEventListener('change', function() {
+    difficulty = this.value;
+});
 
 // Pause menu button handlers
 document.getElementById('resumeBtn').addEventListener('click', resumeGame);
 document.getElementById('restartBtn').addEventListener('click', restartGame);
 document.getElementById('quitBtn').addEventListener('click', quitToStart);
+
+// Menu functions
+function showLeaderboard() {
+    fetch('/api/highscores')
+        .then(res => res.json())
+        .then(scores => {
+            const leaderboardList = document.getElementById('leaderboardList');
+            if (scores.length === 0) {
+                leaderboardList.innerHTML = '<p class="no-history">No scores yet. Be the first!</p>';
+            } else {
+                leaderboardList.innerHTML = scores.map((entry, index) => `
+                    <div class="leaderboard-entry ${index < 3 ? 'top-3' : ''}">
+                        <span class="leaderboard-rank">#${index + 1}</span>
+                        <span class="leaderboard-name">${entry.name}</span>
+                        <span class="leaderboard-score">${entry.score}</span>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('leaderboardScreen').classList.remove('hidden');
+        })
+        .catch(err => {
+            console.error('Error loading leaderboard:', err);
+            document.getElementById('leaderboardList').innerHTML = '<p class="no-history">Error loading scores</p>';
+            document.getElementById('leaderboardScreen').classList.remove('hidden');
+        });
+}
+
+function showHowToPlay() {
+    document.getElementById('howToPlayScreen').classList.remove('hidden');
+}
+
+function showSettings() {
+    document.getElementById('settingsScreen').classList.remove('hidden');
+}
 
 gameLoop();

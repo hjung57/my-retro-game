@@ -19,6 +19,23 @@
         <canvas id="gameCanvas" width="700" height="775"></canvas>
         <div id="message" class="message"></div>
         
+        <!-- Start Screen -->
+        <div id="startScreen" class="start-screen">
+            <div class="start-content">
+                <h1 class="game-title">PAC-KIRO</h1>
+                <p class="tagline">Eat the competition</p>
+                <div class="kiro-logo-display">
+                    <img src="/kiro-logo.png" alt="Kiro" class="logo-img">
+                </div>
+                <div class="menu-buttons">
+                    <button id="startGameBtn" class="main-menu-btn primary">Start Game</button>
+                    <button id="leaderboardBtn" class="main-menu-btn">Leaderboard</button>
+                    <button id="howToPlayBtn" class="main-menu-btn">How to Play</button>
+                    <button id="settingsBtn" class="main-menu-btn">Settings</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Pause Menu -->
         <div id="pauseMenu" class="pause-menu hidden">
             <div class="pause-content">
@@ -28,12 +45,73 @@
                 <button id="quitBtn" class="menu-btn">Quit to Start</button>
             </div>
         </div>
-        
-        <div class="history-panel">
-            <h2>Game History</h2>
-            <button id="refreshHistory" class="refresh-btn">Refresh</button>
-            <div id="gameHistory" class="game-history"></div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboardScreen" class="modal-screen hidden">
+            <div class="modal-content">
+                <h2>🏆 LEADERBOARD</h2>
+                <div id="leaderboardList" class="leaderboard-list">
+                    <!-- Will be populated dynamically -->
+                </div>
+                <button id="closeLeaderboardBtn" class="menu-btn">Back to Menu</button>
+            </div>
         </div>
+
+        <!-- How to Play Screen -->
+        <div id="howToPlayScreen" class="modal-screen hidden">
+            <div class="modal-content">
+                <h2>HOW TO PLAY</h2>
+                <div class="instructions">
+                    <div class="instruction-item">
+                        <span class="key-icon">↑ ↓ ← →</span>
+                        <p>Use arrow keys to move Kiro</p>
+                    </div>
+                    <div class="instruction-item">
+                        <span class="key-icon">ESC</span>
+                        <p>Pause the game</p>
+                    </div>
+                    <div class="instruction-section">
+                        <h3>Objective</h3>
+                        <p>Collect all dots while avoiding ghosts!</p>
+                    </div>
+                    <div class="instruction-section">
+                        <h3>Scoring</h3>
+                        <p>🟢 Dot: 10 points</p>
+                        <p>⚡ Power Pellet: 50 points</p>
+                        <p>👻 Ghost: 200 points (when powered)</p>
+                    </div>
+                    <div class="instruction-section">
+                        <h3>Power Pellets</h3>
+                        <p>Grab the large dots to turn ghosts blue and eat them!</p>
+                    </div>
+                </div>
+                <button id="closeHowToPlayBtn" class="menu-btn">Back to Menu</button>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settingsScreen" class="modal-screen hidden">
+            <div class="modal-content">
+                <h2>⚙️ SETTINGS</h2>
+                <div class="settings-options">
+                    <div class="setting-item">
+                        <label for="soundToggle">Sound Effects</label>
+                        <button id="soundToggle" class="toggle-btn active">ON</button>
+                    </div>
+                    <div class="setting-item">
+                        <label for="difficultySelect">Difficulty</label>
+                        <select id="difficultySelect" class="select-input">
+                            <option value="easy">Easy</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="closeSettingsBtn" class="menu-btn">Back to Menu</button>
+            </div>
+        </div>
+        
+
     </div>
     <script src="particles.js"></script>
     <script src="game.js"></script>
