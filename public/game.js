@@ -97,6 +97,87 @@ const ghostColors = ['#FF0000', '#FFB8FF', '#00FFFF', '#FFB852'];
 // Particle system
 const particleSystem = new ParticleSystem();
 
+// Audio Manager
+class AudioManager {
+    constructor() {
+        this.sounds = {
+            'dot': null,
+            'powerPellet': null,
+            'eatGhost': null,
+            'death': null,
+            'gameStart': null
+        };
+        this.loaded = false;
+        this.loadingSounds = 0;
+        this.totalSounds = Object.keys(this.sounds).length;
+    }
+
+    initAudio() {
+        // Preload all sound files
+        const soundFiles = {
+            'dot': '/sounds/dot.wav',
+            'powerPellet': '/sounds/power-pellet.wav',
+            'eatGhost': '/sounds/eat-ghost.wav',
+            'death': '/sounds/death.wav',
+            'gameStart': '/sounds/game-start.wav'
+        };
+
+        Object.keys(soundFiles).forEach(soundName => {
+            const audio = new Audio();
+            audio.preload = 'auto';
+            
+            audio.addEventListener('canplaythrough', () => {
+                this.loadingSounds++;
+                if (this.loadingSounds === this.totalSounds) {
+                    this.loaded = true;
+                    console.log('All audio files loaded successfully');
+                }
+            }, { once: true });
+
+            audio.addEventListener('error', (e) => {
+                console.warn(`Failed to load sound: ${soundName}`, e);
+                this.loadingSounds++;
+                if (this.loadingSounds === this.totalSounds) {
+                    this.loaded = true;
+                }
+            });
+
+            audio.src = soundFiles[soundName];
+            this.sounds[soundName] = audio;
+        });
+    }
+
+    playSound(soundName) {
+        if (!this.sounds[soundName]) {
+            console.warn(`Sound not found: ${soundName}`);
+            return;
+        }
+
+        try {
+            // Clone the audio element to allow overlapping sounds
+            const sound = this.sounds[soundName].cloneNode();
+            sound.volume = 0.3; // Set volume to 30% to avoid being too loud
+            
+            // Play the sound
+            const playPromise = sound.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.warn(`Error playing sound ${soundName}:`, error);
+                });
+            }
+        } catch (error) {
+            console.warn(`Error playing sound ${soundName}:`, error);
+        }
+    }
+
+    isReady() {
+        return this.loaded;
+    }
+}
+
+const audioManager = new AudioManager();
+
 function initGhosts() {
     // Spawn all ghosts in the same row inside the ghost house
     ghosts = [
@@ -140,22 +221,60 @@ function loadHighScore() {
         .catch(err => console.error('Error loading high scores:', err));
 }
 
-function saveHighScore() {
-    if (score > highScore) {
-        // Trigger confetti for new high score
-        particleSystem.createConfetti(50, canvas.width);
-        
-        fetch('/api/highscores', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ score: score, name: 'Player' })
-        })
-        .then(() => {
+function saveGameSession() {
+    // Always save game session on game over
+    fetch('/api/highscores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: score, name: 'Player' })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.isNewHighScore) {
+            // Trigger confetti for new high score
+            particleSystem.createConfetti(50, canvas.width);
             highScore = score;
             highScoreEl.textContent = highScore;
+        }
+    })
+    .catch(err => console.error('Error saving game session:', err));
+}
+
+function loadGameHistory() {
+    fetch('/api/history')
+        .then(res => res.json())
+        .then(history => {
+            displayGameHistory(history);
         })
-        .catch(err => console.error('Error saving high score:', err));
+        .catch(err => console.error('Error loading game history:', err));
+}
+
+function displayGameHistory(history) {
+    const historyContainer = document.getElementById('gameHistory');
+    if (!historyContainer) return;
+    
+    if (history.length === 0) {
+        historyContainer.innerHTML = '<p class="no-history">No games played yet</p>';
+        return;
     }
+    
+    const historyHTML = history.slice(0, 10).map((session, index) => {
+        const date = new Date(session.timestamp * 1000);
+        const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        const highScoreBadge = session.isHighScore ? '<span class="high-score-badge">🏆 High Score!</span>' : '';
+        
+        return `
+            <div class="history-item ${session.isHighScore ? 'is-high-score' : ''}">
+                <span class="rank">#${index + 1}</span>
+                <span class="player-name">${session.name}</span>
+                <span class="score">${session.score}</span>
+                <span class="date">${dateStr}</span>
+                ${highScoreBadge}
+            </div>
+        `;
+    }).join('');
+    
+    historyContainer.innerHTML = historyHTML;
 }
 
 function updateUI() {
@@ -226,6 +345,7 @@ function moveKiro() {
             if (tile === 2) {
                 maze[kiro.y][kiro.x] = 0;
                 score += 10;
+                audioManager.playSound('dot');
                 updateUI();
             } else if (tile === 3) { // Power pellet
                 maze[kiro.y][kiro.x] = 0;
@@ -233,6 +353,7 @@ function moveKiro() {
                 powerPelletActive = true;
                 powerPelletTimer = POWER_PELLET_DURATION;
                 ghosts.forEach(g => g.scared = true);
+                audioManager.playSound('powerPellet');
                 
                 // Start respawn timer for this pellet
                 powerPelletPositions.forEach((pos, index) => {
@@ -416,6 +537,7 @@ function checkCollisions() {
             if (powerPelletActive && ghost.scared) {
                 // Eat ghost
                 score += 200;
+                audioManager.playSound('eatGhost');
                 updateUI();
                 // Respawn ghost at starting position in the ghost house
                 ghost.x = ghost.startX;
@@ -426,6 +548,7 @@ function checkCollisions() {
             } else if (!ghost.scared) {
                 // Create explosion effect on collision
                 particleSystem.createExplosion(kiro.x, kiro.y, 20, TILE_SIZE);
+                audioManager.playSound('death');
                 
                 // Lose life
                 lives--;
@@ -433,7 +556,7 @@ function checkCollisions() {
                 if (lives <= 0) {
                     gameState = 'gameOver';
                     messageEl.textContent = 'Game Over! Press any arrow key to restart';
-                    saveHighScore();
+                    saveGameSession();
                 } else {
                     // Reset positions
                     kiro.x = 14;
@@ -454,6 +577,40 @@ function checkWin() {
         }
     }
     return true;
+}
+
+function drawKiroWithPowerEffect(ctx, x, y, frameCount) {
+    // Draw pulsing border when powered
+    if (powerPelletActive) {
+        // Pulsing effect using sine wave (1.5-2.5 second cycle at 60fps)
+        const pulseSpeed = 0.05; // Adjust for cycle duration
+        const pulseSize = 3 + Math.sin(frameCount * pulseSpeed) * 2; // Oscillates between 1 and 5
+        
+        ctx.strokeStyle = '#5CB54D';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 + pulseSize, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    
+    // Draw Kiro sprite
+    if (kiro.imgLoaded) {
+        ctx.drawImage(kiro.img, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    } else {
+        // Fallback: draw a yellow circle
+        ctx.fillStyle = '#5CB54D';
+        ctx.beginPath();
+        ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Mouth
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.moveTo(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
+        ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0.2 * Math.PI, 1.8 * Math.PI);
+        ctx.closePath();
+        ctx.fill();
+    }
 }
 
 function draw() {
@@ -484,24 +641,8 @@ function draw() {
         }
     }
 
-    // Draw Kiro
-    if (kiro.imgLoaded) {
-        ctx.drawImage(kiro.img, kiro.x * TILE_SIZE, kiro.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-    } else {
-        // Fallback: draw a yellow circle
-        ctx.fillStyle = '#5CB54D';
-        ctx.beginPath();
-        ctx.arc(kiro.x * TILE_SIZE + TILE_SIZE/2, kiro.y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Mouth
-        ctx.fillStyle = '#1a1a1a';
-        ctx.beginPath();
-        ctx.moveTo(kiro.x * TILE_SIZE + TILE_SIZE/2, kiro.y * TILE_SIZE + TILE_SIZE/2);
-        ctx.arc(kiro.x * TILE_SIZE + TILE_SIZE/2, kiro.y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0.2 * Math.PI, 1.8 * Math.PI);
-        ctx.closePath();
-        ctx.fill();
-    }
+    // Draw Kiro with power-up effect if active
+    drawKiroWithPowerEffect(ctx, kiro.x, kiro.y, frameCount);
 
     // Draw ghosts
     ghosts.forEach(ghost => {
@@ -587,6 +728,7 @@ document.addEventListener('keydown', (e) => {
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
             gameState = 'playing';
             messageEl.textContent = '';
+            audioManager.playSound('gameStart');
             e.preventDefault();
         }
     } else if (gameState === 'gameOver' || gameState === 'levelComplete') {
@@ -615,5 +757,16 @@ document.addEventListener('keydown', (e) => {
 
 // Initialize and start
 init();
+audioManager.initAudio();
 messageEl.textContent = 'Use arrow keys to move! Press any arrow key to start';
+loadGameHistory();
+
+// Add refresh button handler
+const refreshBtn = document.getElementById('refreshHistory');
+if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+        loadGameHistory();
+    });
+}
+
 gameLoop();
