@@ -18,6 +18,17 @@
         </div>
         <canvas id="gameCanvas" width="700" height="775"></canvas>
         <div id="message" class="message"></div>
+        
+        <!-- Pause Menu -->
+        <div id="pauseMenu" class="pause-menu hidden">
+            <div class="pause-content">
+                <h2>PAUSED</h2>
+                <button id="resumeBtn" class="menu-btn">Resume (ESC)</button>
+                <button id="restartBtn" class="menu-btn">Restart Game</button>
+                <button id="quitBtn" class="menu-btn">Quit to Start</button>
+            </div>
+        </div>
+        
         <div class="history-panel">
             <h2>Game History</h2>
             <button id="refreshHistory" class="refresh-btn">Refresh</button>

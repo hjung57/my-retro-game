@@ -23,6 +23,8 @@ let highScore = 0;
 let frameCount = 0;
 let powerPelletActive = false;
 let powerPelletTimer = 0;
+let isPaused = false;
+let waitingForRespawn = false;
 const POWER_PELLET_DURATION = 300; // frames
 const POWER_PELLET_RESPAWN_TIME = 600; // frames (10 seconds at 60fps)
 const MAX_POWER_PELLETS = 4;
@@ -532,7 +534,7 @@ function moveGhosts() {
 }
 
 function checkCollisions() {
-    ghosts.forEach((ghost, index) => {
+    ghosts.forEach((ghost) => {
         if (ghost.x === kiro.x && ghost.y === kiro.y) {
             if (powerPelletActive && ghost.scared) {
                 // Eat ghost
@@ -558,6 +560,9 @@ function checkCollisions() {
                     messageEl.textContent = 'Game Over! Press any arrow key to restart';
                     saveGameSession();
                 } else {
+                    // Pause game and wait for arrow key to respawn
+                    waitingForRespawn = true;
+                    messageEl.textContent = 'Press any arrow key to continue';
                     // Reset positions
                     kiro.x = 14;
                     kiro.y = 23;
@@ -666,7 +671,7 @@ function draw() {
 }
 
 function update() {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' || isPaused || waitingForRespawn) return;
 
     frameCount++;
     
@@ -689,7 +694,7 @@ function update() {
     
     // Update power pellet respawn timers
     let activePellets = 0;
-    powerPelletPositions.forEach((pos, index) => {
+    powerPelletPositions.forEach((pos) => {
         if (maze[pos.y][pos.x] === 3) {
             activePellets++;
         }
@@ -720,9 +725,58 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+// Pause menu functions
+function togglePause() {
+    if (gameState !== 'playing') return;
+    
+    isPaused = !isPaused;
+    const pauseMenu = document.getElementById('pauseMenu');
+    
+    if (isPaused) {
+        pauseMenu.classList.remove('hidden');
+    } else {
+        pauseMenu.classList.add('hidden');
+    }
+}
+
+function resumeGame() {
+    isPaused = false;
+    document.getElementById('pauseMenu').classList.add('hidden');
+}
+
+function restartGame() {
+    isPaused = false;
+    waitingForRespawn = false;
+    document.getElementById('pauseMenu').classList.add('hidden');
+    init();
+    gameState = 'playing';
+    messageEl.textContent = '';
+}
+
+function quitToStart() {
+    isPaused = false;
+    waitingForRespawn = false;
+    document.getElementById('pauseMenu').classList.add('hidden');
+    init();
+    gameState = 'start';
+    messageEl.textContent = 'Use arrow keys to move! Press any arrow key to start';
+}
+
 // Keyboard controls
 document.addEventListener('keydown', (e) => {
     const key = e.key;
+    
+    // Escape key for pause menu
+    if (key === 'Escape') {
+        if (gameState === 'playing' && !waitingForRespawn) {
+            togglePause();
+            e.preventDefault();
+        } else if (isPaused) {
+            resumeGame();
+            e.preventDefault();
+        }
+        return;
+    }
     
     if (gameState === 'start') {
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
@@ -739,6 +793,17 @@ document.addEventListener('keydown', (e) => {
             e.preventDefault();
         }
     } else if (gameState === 'playing') {
+        // Resume from death pause
+        if (waitingForRespawn && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+            waitingForRespawn = false;
+            messageEl.textContent = '';
+            e.preventDefault();
+            return;
+        }
+        
+        // Don't process movement if paused
+        if (isPaused) return;
+        
         if (key === 'ArrowUp') {
             kiro.nextDirection = 'up';
             e.preventDefault();
@@ -768,5 +833,10 @@ if (refreshBtn) {
         loadGameHistory();
     });
 }
+
+// Pause menu button handlers
+document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+document.getElementById('restartBtn').addEventListener('click', restartGame);
+document.getElementById('quitBtn').addEventListener('click', quitToStart);
 
 gameLoop();
