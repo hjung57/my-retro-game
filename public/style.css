@@ -7,7 +7,7 @@
 body {
     background-color: #0a0a0a;
     color: #ffffff;
-    font-family: 'Arial', sans-serif;
+    font-family: 'Press Start 2P', cursive;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -25,16 +25,18 @@ body {
 
 h1 {
     color: #5CB54D;
-    font-size: 3em;
+    font-size: 2.5em;
     text-shadow: 0 0 10px #5CB54D;
     margin-bottom: 15px;
+    font-family: 'Press Start 2P', cursive;
 }
 
 .stats {
     display: flex;
     justify-content: center;
     gap: 30px;
-    font-size: 1.2em;
+    font-size: 0.9em;
+    font-family: 'Press Start 2P', cursive;
 }
 
 .score, .lives, .high-score {
@@ -56,10 +58,12 @@ h1 {
 
 .message {
     margin-top: 20px;
-    font-size: 1.5em;
+    font-size: 0.8em;
     color: #5CB54D;
     min-height: 40px;
     text-shadow: 0 0 5px #5CB54D;
+    font-family: 'Press Start 2P', cursive;
+    line-height: 1.6;
 }
 
 .history-panel {
@@ -184,19 +188,22 @@ h1 {
 }
 
 .game-title {
-    font-size: 72px;
+    font-size: 48px;
     color: #5CB54D;
     text-shadow: 0 0 20px rgba(92, 181, 77, 0.8), 0 0 40px rgba(92, 181, 77, 0.4);
-    margin-bottom: 10px;
-    letter-spacing: 8px;
+    margin-bottom: 20px;
+    letter-spacing: 4px;
+    font-family: 'Press Start 2P', cursive;
+    line-height: 1.5;
 }
 
 .tagline {
-    font-size: 24px;
+    font-size: 14px;
     color: #a0a0a0;
-    font-style: italic;
     margin-bottom: 40px;
     text-shadow: 0 0 10px rgba(160, 160, 160, 0.5);
+    font-family: 'Press Start 2P', cursive;
+    line-height: 1.8;
 }
 
 .kiro-logo-display {
@@ -224,19 +231,19 @@ h1 {
 }
 
 .main-menu-btn {
-    width: 300px;
-    padding: 18px 40px;
+    width: 320px;
+    padding: 20px 40px;
     background: #2a2a2a;
     color: #5CB54D;
     border: 2px solid #5CB54D;
     border-radius: 8px;
-    font-size: 20px;
-    font-family: 'Arial', sans-serif;
-    font-weight: bold;
+    font-size: 12px;
+    font-family: 'Press Start 2P', cursive;
     cursor: pointer;
     transition: all 0.3s ease;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
+    line-height: 1.5;
 }
 
 .main-menu-btn.primary {
@@ -299,9 +306,11 @@ h1 {
 
 .modal-content h2 {
     color: #5CB54D;
-    font-size: 42px;
+    font-size: 24px;
     margin: 0 0 30px 0;
     text-shadow: 0 0 10px rgba(92, 181, 77, 0.8);
+    font-family: 'Press Start 2P', cursive;
+    line-height: 1.5;
 }
 
 /* Leaderboard */
@@ -332,22 +341,23 @@ h1 {
 }
 
 .leaderboard-rank {
-    font-size: 24px;
-    font-weight: bold;
+    font-size: 14px;
     color: #5CB54D;
     min-width: 50px;
+    font-family: 'Press Start 2P', cursive;
 }
 
 .leaderboard-name {
     flex: 1;
-    font-size: 18px;
+    font-size: 11px;
     color: #ffffff;
+    font-family: 'Press Start 2P', cursive;
 }
 
 .leaderboard-score {
-    font-size: 20px;
-    font-weight: bold;
+    font-size: 12px;
     color: #5CB54D;
+    font-family: 'Press Start 2P', cursive;
 }
 
 /* Instructions */
@@ -367,21 +377,23 @@ h1 {
 }
 
 .key-icon {
-    font-size: 24px;
+    font-size: 16px;
     color: #5CB54D;
-    font-weight: bold;
-    min-width: 80px;
+    min-width: 100px;
     text-align: center;
     background: #1a1a1a;
-    padding: 10px;
+    padding: 12px;
     border-radius: 5px;
     border: 2px solid #5CB54D;
+    font-family: 'Press Start 2P', cursive;
 }
 
 .instruction-item p {
     color: #ffffff;
-    font-size: 16px;
+    font-size: 10px;
     margin: 0;
+    font-family: 'Press Start 2P', cursive;
+    line-height: 1.6;
 }
 
 .instruction-section {
@@ -393,14 +405,18 @@ h1 {
 
 .instruction-section h3 {
     color: #5CB54D;
-    font-size: 20px;
+    font-size: 14px;
     margin-bottom: 10px;
+    font-family: 'Press Start 2P', cursive;
+    line-height: 1.5;
 }
 
 .instruction-section p {
     color: #ffffff;
-    font-size: 16px;
+    font-size: 10px;
     margin: 8px 0;
+    font-family: 'Press Start 2P', cursive;
+    line-height: 1.6;
 }
 
 /* Settings */
@@ -420,8 +436,8 @@ h1 {
 
 .setting-item label {
     color: #ffffff;
-    font-size: 18px;
-    font-weight: bold;
+    font-size: 11px;
+    font-family: 'Press Start 2P', cursive;
 }
 
 .toggle-btn {
@@ -430,8 +446,8 @@ h1 {
     color: #a0a0a0;
     border: 2px solid #5a5a5a;
     border-radius: 5px;
-    font-size: 16px;
-    font-weight: bold;
+    font-size: 11px;
+    font-family: 'Press Start 2P', cursive;
     cursor: pointer;
     transition: all 0.3s ease;
 }
@@ -448,8 +464,8 @@ h1 {
     color: #5CB54D;
     border: 2px solid #5CB54D;
     border-radius: 5px;
-    font-size: 16px;
-    font-family: 'Arial', sans-serif;
+    font-size: 11px;
+    font-family: 'Press Start 2P', cursive;
     cursor: pointer;
 }
 
@@ -483,24 +499,27 @@ h1 {
 
 .pause-content h2 {
     color: #5CB54D;
-    font-size: 48px;
+    font-size: 32px;
     margin: 0 0 30px 0;
     text-shadow: 0 0 10px rgba(92, 181, 77, 0.8);
+    font-family: 'Press Start 2P', cursive;
+    line-height: 1.5;
 }
 
 .menu-btn {
     display: block;
-    width: 250px;
-    padding: 15px 30px;
+    width: 280px;
+    padding: 18px 30px;
     margin: 15px auto;
     background: #2a2a2a;
     color: #5CB54D;
     border: 2px solid #5CB54D;
     border-radius: 5px;
-    font-size: 18px;
-    font-family: 'Arial', sans-serif;
+    font-size: 11px;
+    font-family: 'Press Start 2P', cursive;
     cursor: pointer;
     transition: all 0.3s ease;
+    line-height: 1.5;
 }
 
 .menu-btn:hover {
