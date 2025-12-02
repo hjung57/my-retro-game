@@ -603,6 +603,109 @@ function checkWin() {
     return true;
 }
 
+function drawGhost(ctx, x, y, color, scared, direction, frameCount) {
+    const centerX = x * TILE_SIZE + TILE_SIZE / 2;
+    const centerY = y * TILE_SIZE + TILE_SIZE / 2;
+    const radius = TILE_SIZE / 2 - 2;
+    
+    // Ghost body color
+    if (scared) {
+        // Flashing effect when power pellet is about to end
+        const timeLeft = powerPelletTimer;
+        if (timeLeft < 100 && Math.floor(frameCount / 10) % 2 === 0) {
+            ctx.fillStyle = '#FFFFFF'; // Flash white
+        } else {
+            ctx.fillStyle = '#2563eb'; // Blue when scared
+        }
+    } else {
+        ctx.fillStyle = color;
+    }
+    
+    // Draw rounded top (semi-circle)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY - 2, radius, Math.PI, 0, false);
+    
+    // Draw body rectangle
+    ctx.lineTo(centerX + radius, centerY + radius);
+    
+    // Draw wavy bottom (classic ghost shape)
+    const waveWidth = radius / 2;
+    const waveHeight = 4;
+    const animOffset = Math.sin(frameCount * 0.1) * 2; // Animate the waves
+    
+    // Right wave
+    ctx.lineTo(centerX + radius, centerY + radius - waveHeight);
+    ctx.quadraticCurveTo(
+        centerX + waveWidth, centerY + radius + animOffset,
+        centerX, centerY + radius - waveHeight
+    );
+    
+    // Left wave
+    ctx.quadraticCurveTo(
+        centerX - waveWidth, centerY + radius + animOffset,
+        centerX - radius, centerY + radius - waveHeight
+    );
+    
+    ctx.lineTo(centerX - radius, centerY - 2);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Add subtle shadow/gradient effect
+    const gradient = ctx.createRadialGradient(centerX, centerY - 4, 0, centerX, centerY, radius);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    if (scared) {
+        // Scared face - wobbly mouth
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX - 6, centerY + 4);
+        ctx.lineTo(centerX - 3, centerY + 6);
+        ctx.lineTo(centerX, centerY + 4);
+        ctx.lineTo(centerX + 3, centerY + 6);
+        ctx.lineTo(centerX + 6, centerY + 4);
+        ctx.stroke();
+        
+        // Simple scared eyes
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.arc(centerX - 5, centerY - 2, 2, 0, Math.PI * 2);
+        ctx.arc(centerX + 5, centerY - 2, 2, 0, Math.PI * 2);
+        ctx.fill();
+    } else {
+        // Normal eyes - white with pupils
+        ctx.fillStyle = '#ffffff';
+        
+        // Eye direction based on movement
+        let eyeOffsetX = 0;
+        let eyeOffsetY = 0;
+        if (direction === 'left') eyeOffsetX = -2;
+        if (direction === 'right') eyeOffsetX = 2;
+        if (direction === 'up') eyeOffsetY = -2;
+        if (direction === 'down') eyeOffsetY = 2;
+        
+        // Left eye white
+        ctx.beginPath();
+        ctx.arc(centerX - 5, centerY - 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Right eye white
+        ctx.beginPath();
+        ctx.arc(centerX + 5, centerY - 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Pupils
+        ctx.fillStyle = '#0000FF';
+        ctx.beginPath();
+        ctx.arc(centerX - 5 + eyeOffsetX, centerY - 2 + eyeOffsetY, 2, 0, Math.PI * 2);
+        ctx.arc(centerX + 5 + eyeOffsetX, centerY - 2 + eyeOffsetY, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
 function drawKiroWithPowerEffect(ctx, x, y, frameCount) {
     // Draw pulsing border when powered
     if (powerPelletActive) {
@@ -670,19 +773,7 @@ function draw() {
 
     // Draw ghosts
     ghosts.forEach(ghost => {
-        ctx.fillStyle = ghost.scared ? '#0000FF' : ghost.color;
-        ctx.beginPath();
-        ctx.arc(ghost.x * TILE_SIZE + TILE_SIZE/2, ghost.y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Eyes
-        if (!ghost.scared) {
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(ghost.x * TILE_SIZE + 6, ghost.y * TILE_SIZE + 8, 3, 0, Math.PI * 2);
-            ctx.arc(ghost.x * TILE_SIZE + 14, ghost.y * TILE_SIZE + 8, 3, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        drawGhost(ctx, ghost.x, ghost.y, ghost.color, ghost.scared, ghost.direction, frameCount);
     });
     
     // Draw particles
