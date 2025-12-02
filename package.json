@@ -1,0 +1,13 @@
+{
+  "name": "pac-kiro-game",
+  "version": "1.0.0",
+  "description": "Pac-Man style game with Kiro",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "fast-check": "^3.15.0"
+  }
+}

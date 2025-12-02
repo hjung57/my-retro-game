@@ -1,0 +1,619 @@
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
+const highScoreEl = document.getElementById('highScore');
+const messageEl = document.getElementById('message');
+
+// Game constants
+const TILE_SIZE = 25;
+const COLS = 28;
+const ROWS = 31;
+
+// Movement timing
+const KIRO_SPEED = 8; // frames between moves
+const GHOST_SPEED = 18; // frames between moves (slower)
+const SCARED_GHOST_SPEED = 24; // slower when scared
+
+// Game state
+let gameState = 'start';
+let score = 0;
+let lives = 3;
+let highScore = 0;
+let frameCount = 0;
+let powerPelletActive = false;
+let powerPelletTimer = 0;
+const POWER_PELLET_DURATION = 300; // frames
+const POWER_PELLET_RESPAWN_TIME = 600; // frames (10 seconds at 60fps)
+const MAX_POWER_PELLETS = 4;
+
+// Power pellet positions (from original maze)
+const powerPelletPositions = [
+    { x: 1, y: 3 },
+    { x: 26, y: 3 },
+    { x: 1, y: 23 },
+    { x: 26, y: 23 }
+];
+let powerPelletRespawnTimers = [0, 0, 0, 0];
+
+// Original maze template (never modified)
+const originalMaze = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+    [1,3,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,3,1],
+    [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,2,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,2,1],
+    [1,2,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,2,1],
+    [1,2,2,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,2,2,1],
+    [1,1,1,1,1,1,2,1,1,1,1,1,0,1,1,0,1,1,1,1,1,2,1,1,1,1,1,1],
+    [1,1,1,1,1,1,2,1,1,1,1,1,0,1,1,0,1,1,1,1,1,2,1,1,1,1,1,1],
+    [1,1,1,1,1,1,2,1,1,0,0,0,0,0,0,0,0,0,0,1,1,2,1,1,1,1,1,1],
+    [1,1,1,1,1,1,2,1,1,0,1,1,1,0,0,1,1,1,0,1,1,2,1,1,1,1,1,1],
+    [1,1,1,1,1,1,2,1,1,0,1,0,0,0,0,0,0,1,0,1,1,2,1,1,1,1,1,1],
+    [0,0,0,0,0,0,2,0,0,0,1,0,0,0,0,0,0,1,0,0,0,2,0,0,0,0,0,0],
+    [1,1,1,1,1,1,2,1,1,0,1,0,0,0,0,0,0,1,0,1,1,2,1,1,1,1,1,1],
+    [1,1,1,1,1,1,2,1,1,0,1,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,1,1],
+    [1,1,1,1,1,1,2,1,1,0,0,0,0,0,0,0,0,0,0,1,1,2,1,1,1,1,1,1],
+    [1,1,1,1,1,1,2,1,1,0,1,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,1,1],
+    [1,1,1,1,1,1,2,1,1,0,1,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,1,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+    [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+    [1,3,2,2,1,1,2,2,2,2,2,2,2,0,0,2,2,2,2,2,2,2,1,1,2,2,3,1],
+    [1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1],
+    [1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1],
+    [1,2,2,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,2,2,1],
+    [1,2,1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,1,2,1],
+    [1,2,1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,1,2,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+
+// Working maze (gets modified during gameplay)
+let maze = [];
+
+// Kiro character
+let kiro = {
+    x: 14,
+    y: 23,
+    direction: null,
+    nextDirection: null,
+    moveTimer: 0,
+    img: new Image(),
+    imgLoaded: false
+};
+kiro.img.src = '/kiro-logo.png';
+kiro.img.onload = () => { kiro.imgLoaded = true; };
+kiro.img.onerror = () => { console.error('Failed to load kiro-logo.png'); };
+
+// Ghosts
+let ghosts = [];
+
+// Ghost colors using Kiro brand palette
+const ghostColors = ['#FF0000', '#FFB8FF', '#00FFFF', '#FFB852'];
+
+// Particle system
+const particleSystem = new ParticleSystem();
+
+function initGhosts() {
+    // Spawn all ghosts in the same row inside the ghost house
+    ghosts = [
+        { x: 12, y: 14, direction: 'up', moveTimer: 0, color: ghostColors[0], scared: false, startX: 12, startY: 14, inHouse: true },
+        { x: 13, y: 14, direction: 'up', moveTimer: 40, color: ghostColors[1], scared: false, startX: 13, startY: 14, inHouse: true },
+        { x: 14, y: 14, direction: 'up', moveTimer: 80, color: ghostColors[2], scared: false, startX: 14, startY: 14, inHouse: true },
+        { x: 15, y: 14, direction: 'up', moveTimer: 120, color: ghostColors[3], scared: false, startX: 15, startY: 14, inHouse: true }
+    ];
+}
+
+function copyMaze() {
+    maze = originalMaze.map(row => [...row]);
+}
+
+function init() {
+    copyMaze();
+    kiro.x = 14;
+    kiro.y = 23;
+    kiro.direction = null;
+    kiro.nextDirection = null;
+    kiro.moveTimer = 0;
+    initGhosts();
+    score = 0;
+    lives = 3;
+    frameCount = 0;
+    powerPelletActive = false;
+    powerPelletTimer = 0;
+    updateUI();
+    loadHighScore();
+}
+
+function loadHighScore() {
+    fetch('/api/highscores')
+        .then(res => res.json())
+        .then(scores => {
+            if (scores.length > 0) {
+                highScore = scores[0].score;
+                highScoreEl.textContent = highScore;
+            }
+        })
+        .catch(err => console.error('Error loading high scores:', err));
+}
+
+function saveHighScore() {
+    if (score > highScore) {
+        // Trigger confetti for new high score
+        particleSystem.createConfetti(50, canvas.width);
+        
+        fetch('/api/highscores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ score: score, name: 'Player' })
+        })
+        .then(() => {
+            highScore = score;
+            highScoreEl.textContent = highScore;
+        })
+        .catch(err => console.error('Error saving high score:', err));
+    }
+}
+
+function updateUI() {
+    scoreEl.textContent = score;
+    livesEl.textContent = lives;
+}
+
+function canMove(x, y, isGhost = false, ghostObj = null) {
+    if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return false;
+    const tile = maze[y][x];
+    
+    // Kiro cannot move through walls
+    if (!isGhost) {
+        return tile !== 1;
+    }
+    
+    // Ghosts can move anywhere except walls
+    if (tile === 1) return false;
+    
+    // Prevent ghosts from re-entering the ghost house once they've exited
+    if (ghostObj && !ghostObj.inHouse) {
+        // Ghost house area is roughly x: 10-17, y: 12-16
+        if (x >= 10 && x <= 17 && y >= 12 && y <= 16) {
+            return false; // Can't go back into ghost house
+        }
+    }
+    
+    return true;
+}
+
+function moveKiro() {
+    if (kiro.moveTimer > 0) {
+        kiro.moveTimer--;
+        return;
+    }
+
+    // Try to change direction
+    if (kiro.nextDirection) {
+        const { dx, dy } = getDirectionDelta(kiro.nextDirection);
+        if (canMove(kiro.x + dx, kiro.y + dy)) {
+            kiro.direction = kiro.nextDirection;
+            kiro.nextDirection = null;
+        }
+    }
+
+    // Move in current direction
+    if (kiro.direction) {
+        const { dx, dy } = getDirectionDelta(kiro.direction);
+        let newX = kiro.x + dx;
+        let newY = kiro.y + dy;
+
+        // Wraparound tunnel on row 14 (center horizontal lane)
+        if (newY === 14 || kiro.y === 14) {
+            if (newX < 0) {
+                newX = COLS - 1; // Wrap to right side
+            } else if (newX >= COLS) {
+                newX = 0; // Wrap to left side
+            }
+        }
+
+        if (canMove(newX, newY)) {
+            kiro.x = newX;
+            kiro.y = newY;
+            kiro.moveTimer = KIRO_SPEED;
+
+            // Collect dots
+            const tile = maze[kiro.y][kiro.x];
+            if (tile === 2) {
+                maze[kiro.y][kiro.x] = 0;
+                score += 10;
+                updateUI();
+            } else if (tile === 3) { // Power pellet
+                maze[kiro.y][kiro.x] = 0;
+                score += 50;
+                powerPelletActive = true;
+                powerPelletTimer = POWER_PELLET_DURATION;
+                ghosts.forEach(g => g.scared = true);
+                
+                // Start respawn timer for this pellet
+                powerPelletPositions.forEach((pos, index) => {
+                    if (pos.x === kiro.x && pos.y === kiro.y) {
+                        powerPelletRespawnTimers[index] = 0;
+                    }
+                });
+                
+                updateUI();
+            }
+
+            // Check win condition
+            if (checkWin()) {
+                // Just restore the dots, keep everything else as is
+                copyMaze();
+                // Keep Kiro and ghost positions, direction, score, lives
+                // Game continues seamlessly
+            }
+        }
+    }
+}
+
+function getDirectionDelta(dir) {
+    switch(dir) {
+        case 'up': return { dx: 0, dy: -1 };
+        case 'down': return { dx: 0, dy: 1 };
+        case 'left': return { dx: -1, dy: 0 };
+        case 'right': return { dx: 1, dy: 0 };
+        default: return { dx: 0, dy: 0 };
+    }
+}
+
+function isGhostAt(x, y, excludeIndex) {
+    return ghosts.some((g, i) => i !== excludeIndex && g.x === x && g.y === y);
+}
+
+function moveGhosts() {
+    ghosts.forEach((ghost, index) => {
+        // Always decrement timer
+        if (ghost.moveTimer > 0) {
+            ghost.moveTimer--;
+        }
+        
+        // Only move when timer reaches 0
+        if (ghost.moveTimer > 0) {
+            return;
+        }
+
+        const speed = ghost.scared ? SCARED_GHOST_SPEED : GHOST_SPEED;
+        
+        // Special logic for exiting ghost house
+        if (ghost.inHouse) {
+            // Step 1: Move horizontally to center columns (x=13 or x=14)
+            if (ghost.x < 13) {
+                ghost.x++;
+                ghost.direction = 'right';
+                ghost.moveTimer = speed;
+                return;
+            } else if (ghost.x > 14) {
+                ghost.x--;
+                ghost.direction = 'left';
+                ghost.moveTimer = speed;
+                return;
+            }
+            
+            // Step 2: Now at center column (x=13 or x=14), move up to exit
+            if (ghost.y <= 11) {
+                // Successfully exited the house
+                ghost.inHouse = false;
+                // Don't return, let normal AI take over
+            } else {
+                // Still inside, move up
+                ghost.y--;
+                ghost.direction = 'up';
+                ghost.moveTimer = speed;
+                return;
+            }
+        }
+        
+        // Get opposite direction to avoid immediate backtracking
+        const oppositeDir = {
+            'up': 'down',
+            'down': 'up',
+            'left': 'right',
+            'right': 'left'
+        }[ghost.direction];
+        
+        // Try all directions
+        const directions = ['up', 'down', 'left', 'right'];
+        const validMoves = [];
+        
+        directions.forEach(dir => {
+            // Skip going backwards unless it's the only option
+            if (dir === oppositeDir) return;
+            
+            const { dx, dy } = getDirectionDelta(dir);
+            const newX = ghost.x + dx;
+            const newY = ghost.y + dy;
+
+            // Check if move is valid
+            if (canMove(newX, newY, true, ghost)) {
+                const dist = Math.abs(newX - kiro.x) + Math.abs(newY - kiro.y);
+                const hasGhost = isGhostAt(newX, newY, index);
+                
+                validMoves.push({
+                    dir: dir,
+                    x: newX,
+                    y: newY,
+                    dist: dist,
+                    hasGhost: hasGhost
+                });
+            }
+        });
+        
+        // If no valid moves (dead end), allow going backwards
+        if (validMoves.length === 0) {
+            const { dx, dy } = getDirectionDelta(oppositeDir);
+            const newX = ghost.x + dx;
+            const newY = ghost.y + dy;
+            if (canMove(newX, newY, true, ghost)) {
+                validMoves.push({
+                    dir: oppositeDir,
+                    x: newX,
+                    y: newY,
+                    dist: Math.abs(newX - kiro.x) + Math.abs(newY - kiro.y),
+                    hasGhost: isGhostAt(newX, newY, index)
+                });
+            }
+        }
+        
+        if (validMoves.length > 0) {
+            // Prefer moves without other ghosts
+            let movesWithoutGhosts = validMoves.filter(m => !m.hasGhost);
+            if (movesWithoutGhosts.length === 0) {
+                movesWithoutGhosts = validMoves; // Use all moves if all have ghosts
+            }
+            
+            // Sort by distance (closest for chase, farthest for scared)
+            movesWithoutGhosts.sort((a, b) => {
+                if (ghost.scared) {
+                    return b.dist - a.dist; // Farthest first when scared
+                } else {
+                    return a.dist - b.dist; // Closest first when chasing
+                }
+            });
+            
+            // Add some randomness: 80% best move, 20% random valid move
+            let chosenMove;
+            if (Math.random() < 0.8) {
+                chosenMove = movesWithoutGhosts[0]; // Best move
+            } else {
+                chosenMove = movesWithoutGhosts[Math.floor(Math.random() * movesWithoutGhosts.length)]; // Random
+            }
+            
+            // Double-check the move is still valid with ghost house restriction
+            if (canMove(chosenMove.x, chosenMove.y, true, ghost)) {
+                ghost.direction = chosenMove.dir;
+                let finalX = chosenMove.x;
+                let finalY = chosenMove.y;
+                
+                // Wraparound tunnel on row 14 (center horizontal lane)
+                if (finalY === 14 || ghost.y === 14) {
+                    if (finalX < 0) {
+                        finalX = COLS - 1; // Wrap to right side
+                    } else if (finalX >= COLS) {
+                        finalX = 0; // Wrap to left side
+                    }
+                }
+                
+                ghost.x = finalX;
+                ghost.y = finalY;
+                ghost.moveTimer = speed;
+            }
+        }
+    });
+}
+
+function checkCollisions() {
+    ghosts.forEach((ghost, index) => {
+        if (ghost.x === kiro.x && ghost.y === kiro.y) {
+            if (powerPelletActive && ghost.scared) {
+                // Eat ghost
+                score += 200;
+                updateUI();
+                // Respawn ghost at starting position in the ghost house
+                ghost.x = ghost.startX;
+                ghost.y = ghost.startY;
+                ghost.scared = false;
+                ghost.inHouse = true; // Mark as back in house so it can exit again
+                ghost.direction = 'up';
+            } else if (!ghost.scared) {
+                // Create explosion effect on collision
+                particleSystem.createExplosion(kiro.x, kiro.y, 20, TILE_SIZE);
+                
+                // Lose life
+                lives--;
+                updateUI();
+                if (lives <= 0) {
+                    gameState = 'gameOver';
+                    messageEl.textContent = 'Game Over! Press any arrow key to restart';
+                    saveHighScore();
+                } else {
+                    // Reset positions
+                    kiro.x = 14;
+                    kiro.y = 23;
+                    kiro.direction = null;
+                    kiro.moveTimer = 0;
+                    initGhosts();
+                }
+            }
+        }
+    });
+}
+
+function checkWin() {
+    for (let row of maze) {
+        for (let tile of row) {
+            if (tile === 2 || tile === 3) return false;
+        }
+    }
+    return true;
+}
+
+function draw() {
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw maze
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            const tile = maze[y][x];
+            if (tile === 1) {
+                // Wall
+                ctx.fillStyle = '#2563eb';
+                ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            } else if (tile === 2) {
+                // Dot
+                ctx.fillStyle = '#5CB54D';
+                ctx.beginPath();
+                ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 2, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (tile === 3) {
+                // Power pellet
+                ctx.fillStyle = '#5CB54D';
+                ctx.beginPath();
+                ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    // Draw Kiro
+    if (kiro.imgLoaded) {
+        ctx.drawImage(kiro.img, kiro.x * TILE_SIZE, kiro.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    } else {
+        // Fallback: draw a yellow circle
+        ctx.fillStyle = '#5CB54D';
+        ctx.beginPath();
+        ctx.arc(kiro.x * TILE_SIZE + TILE_SIZE/2, kiro.y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Mouth
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.moveTo(kiro.x * TILE_SIZE + TILE_SIZE/2, kiro.y * TILE_SIZE + TILE_SIZE/2);
+        ctx.arc(kiro.x * TILE_SIZE + TILE_SIZE/2, kiro.y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0.2 * Math.PI, 1.8 * Math.PI);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Draw ghosts
+    ghosts.forEach(ghost => {
+        ctx.fillStyle = ghost.scared ? '#0000FF' : ghost.color;
+        ctx.beginPath();
+        ctx.arc(ghost.x * TILE_SIZE + TILE_SIZE/2, ghost.y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Eyes
+        if (!ghost.scared) {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(ghost.x * TILE_SIZE + 6, ghost.y * TILE_SIZE + 8, 3, 0, Math.PI * 2);
+            ctx.arc(ghost.x * TILE_SIZE + 14, ghost.y * TILE_SIZE + 8, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    });
+    
+    // Draw particles
+    particleSystem.drawParticles(ctx);
+}
+
+function update() {
+    if (gameState !== 'playing') return;
+
+    frameCount++;
+    
+    // Update particles
+    particleSystem.updateParticles();
+    
+    // Create power effect particles around Kiro when powered
+    if (powerPelletActive && frameCount % 5 === 0) {
+        particleSystem.createPowerEffect(kiro.x, kiro.y, TILE_SIZE);
+    }
+    
+    // Update power pellet timer
+    if (powerPelletActive) {
+        powerPelletTimer--;
+        if (powerPelletTimer <= 0) {
+            powerPelletActive = false;
+            ghosts.forEach(g => g.scared = false);
+        }
+    }
+    
+    // Update power pellet respawn timers
+    let activePellets = 0;
+    powerPelletPositions.forEach((pos, index) => {
+        if (maze[pos.y][pos.x] === 3) {
+            activePellets++;
+        }
+    });
+    
+    // Respawn power pellets if under max
+    if (activePellets < MAX_POWER_PELLETS) {
+        powerPelletPositions.forEach((pos, index) => {
+            if (maze[pos.y][pos.x] !== 3) {
+                powerPelletRespawnTimers[index]++;
+                if (powerPelletRespawnTimers[index] >= POWER_PELLET_RESPAWN_TIME) {
+                    maze[pos.y][pos.x] = 3; // Respawn power pellet
+                    powerPelletRespawnTimers[index] = 0;
+                }
+            }
+        });
+    }
+
+    // Move Kiro and ghosts independently
+    moveKiro();
+    moveGhosts(); // Ghosts always move, regardless of Kiro
+    checkCollisions();
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+// Keyboard controls
+document.addEventListener('keydown', (e) => {
+    const key = e.key;
+    
+    if (gameState === 'start') {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+            gameState = 'playing';
+            messageEl.textContent = '';
+            e.preventDefault();
+        }
+    } else if (gameState === 'gameOver' || gameState === 'levelComplete') {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+            init();
+            gameState = 'playing';
+            messageEl.textContent = '';
+            e.preventDefault();
+        }
+    } else if (gameState === 'playing') {
+        if (key === 'ArrowUp') {
+            kiro.nextDirection = 'up';
+            e.preventDefault();
+        } else if (key === 'ArrowDown') {
+            kiro.nextDirection = 'down';
+            e.preventDefault();
+        } else if (key === 'ArrowLeft') {
+            kiro.nextDirection = 'left';
+            e.preventDefault();
+        } else if (key === 'ArrowRight') {
+            kiro.nextDirection = 'right';
+            e.preventDefault();
+        }
+    }
+});
+
+// Initialize and start
+init();
+messageEl.textContent = 'Use arrow keys to move! Press any arrow key to start';
+gameLoop();
