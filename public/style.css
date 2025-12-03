@@ -107,6 +107,9 @@ h1 {
     box-shadow: 0 0 10px rgba(92, 181, 77, 0.5);
     z-index: 100;
     background: rgba(0, 0, 0, 0.7);
+    cursor: move;
+    touch-action: none;
+    user-select: none;
 }
 
 @media (max-width: 768px) {
