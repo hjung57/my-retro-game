@@ -97,12 +97,16 @@
             <div class="modal-content">
                 <h2>⚙️ SETTINGS</h2>
                 <div class="settings-options">
-                    <div class="setting-item">
-                        <label for="soundToggle">Sound Effects</label>
-                        <button id="soundToggle" class="toggle-btn active">ON</button>
+                    <div class="setting-item" style="gap: 50px; padding: 25px 30px;">
+                        <label for="soundToggle" style="flex: 1; text-align: left;">Sound Effects</label>
+                        <button id="soundToggle" class="toggle-btn active" style="width: 100px;">ON</button>
                     </div>
-                    <div class="setting-item">
-                        <label for="difficultySelect">Difficulty</label>
+                    <div class="setting-item" style="gap: 50px; padding: 25px 30px;">
+                        <label for="musicToggle" style="flex: 1; text-align: left;">Background Music</label>
+                        <button id="musicToggle" class="toggle-btn active" style="width: 100px;">ON</button>
+                    </div>
+                    <div class="setting-item" style="gap: 50px; padding: 25px 30px;">
+                        <label for="difficultySelect" style="flex: 1; text-align: left;">Difficulty</label>
                         <select id="difficultySelect" class="select-input">
                             <option value="easy">Easy</option>
                             <option value="normal" selected>Normal</option>
@@ -113,10 +117,30 @@
                 <button id="closeSettingsBtn" class="menu-btn">Back to Menu</button>
             </div>
         </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="modal-screen hidden">
+            <div class="modal-content game-over-content">
+                <h2 class="game-over-title">GAME OVER</h2>
+                <div class="final-score">
+                    <p style="margin-bottom: 30px;">Your Score</p>
+                    <span id="finalScore">0</span>
+                </div>
+                <div style="height: 40px;"></div>
+                <div class="game-over-leaderboard">
+                    <h3>🏆 TOP SCORES</h3>
+                    <div id="gameOverLeaderboardList" class="leaderboard-list">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+                <button id="backToMenuBtn" class="menu-btn primary-btn">Back to Main Menu</button>
+            </div>
+        </div>
         
 
     </div>
     <script src="particles.js"></script>
+    <script src="background-music.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

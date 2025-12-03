@@ -25,11 +25,14 @@ let powerPelletActive = false;
 let powerPelletTimer = 0;
 let isPaused = false;
 let waitingForRespawn = false;
+let deathAnimationTimer = 0;
 let soundEnabled = true;
+let musicEnabled = true;
 let difficulty = 'normal';
 const POWER_PELLET_DURATION = 300; // frames
 const POWER_PELLET_RESPAWN_TIME = 600; // frames (10 seconds at 60fps)
 const MAX_POWER_PELLETS = 4;
+const DEATH_ANIMATION_DELAY = 60; // frames (~1 second at 60fps)
 
 // Power pellet positions (from original maze)
 const powerPelletPositions = [
@@ -566,7 +569,8 @@ function checkCollisions() {
                 ghost.scared = false;
                 ghost.inHouse = true; // Mark as back in house so it can exit again
                 ghost.direction = 'up';
-            } else if (!ghost.scared) {
+            } else if (!ghost.scared && deathAnimationTimer === 0) {
+                // Only trigger death once
                 // Create explosion effect on collision
                 particleSystem.createExplosion(kiro.x, kiro.y, 20, TILE_SIZE);
                 audioManager.playSound('death');
@@ -574,20 +578,13 @@ function checkCollisions() {
                 // Lose life
                 lives--;
                 updateUI();
+                
+                // Start death animation timer
+                deathAnimationTimer = DEATH_ANIMATION_DELAY;
+                
                 if (lives <= 0) {
                     gameState = 'gameOver';
-                    messageEl.textContent = 'Game Over! Press any arrow key to restart';
-                    saveGameSession();
-                } else {
-                    // Pause game and wait for arrow key to respawn
-                    waitingForRespawn = true;
-                    messageEl.textContent = 'Press any arrow key to continue';
-                    // Reset positions
-                    kiro.x = 14;
-                    kiro.y = 23;
-                    kiro.direction = null;
-                    kiro.moveTimer = 0;
-                    initGhosts();
+                    // Save session will be called after animation
                 }
             }
         }
@@ -707,37 +704,145 @@ function drawGhost(ctx, x, y, color, scared, direction, frameCount) {
 }
 
 function drawKiroWithPowerEffect(ctx, x, y, frameCount) {
+    const centerX = x * TILE_SIZE + TILE_SIZE / 2;
+    const centerY = y * TILE_SIZE + TILE_SIZE / 2;
+    const radius = TILE_SIZE / 2 - 2;
+    
     // Draw pulsing border when powered
     if (powerPelletActive) {
-        // Pulsing effect using sine wave (1.5-2.5 second cycle at 60fps)
-        const pulseSpeed = 0.05; // Adjust for cycle duration
-        const pulseSize = 3 + Math.sin(frameCount * pulseSpeed) * 2; // Oscillates between 1 and 5
+        const pulseSpeed = 0.05;
+        const pulseSize = 3 + Math.sin(frameCount * pulseSpeed) * 2;
         
         ctx.strokeStyle = '#5CB54D';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 + pulseSize, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, radius + pulseSize, 0, Math.PI * 2);
         ctx.stroke();
     }
     
-    // Draw Kiro sprite
-    if (kiro.imgLoaded) {
-        ctx.drawImage(kiro.img, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-    } else {
-        // Fallback: draw a yellow circle
-        ctx.fillStyle = '#5CB54D';
-        ctx.beginPath();
-        ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
-        ctx.fill();
+    // Mouth animation - snaps open and closed
+    const mouthCycle = Math.floor(frameCount / 8) % 2; // Toggle every 8 frames
+    const mouthOpen = kiro.direction ? (mouthCycle === 0 ? 0.6 : 0.2) : 0.1; // Wider when moving
+    
+    // Determine rotation based on direction
+    let rotation = 0;
+    if (kiro.direction === 'right') rotation = 0;
+    else if (kiro.direction === 'down') rotation = Math.PI / 2;
+    else if (kiro.direction === 'left') rotation = Math.PI;
+    else if (kiro.direction === 'up') rotation = -Math.PI / 2;
+    
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation);
+    
+    // Alligator green colors
+    const gatorGreen = '#5CB54D';
+    const darkGreen = '#4a9a3d';
+    const scaleGreen = '#6dc55e';
+    
+    // Draw alligator head body (circle)
+    ctx.fillStyle = gatorGreen;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add texture/scales with gradient
+    const gradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
+    gradient.addColorStop(0, scaleGreen);
+    gradient.addColorStop(0.7, gatorGreen);
+    gradient.addColorStop(1, darkGreen);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw snout ridge (darker green bump on top)
+    ctx.fillStyle = darkGreen;
+    ctx.beginPath();
+    ctx.ellipse(radius * 0.3, -radius * 0.3, radius * 0.4, radius * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw eye (white with dark pupil)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(-radius * 0.2, -radius * 0.4, radius * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Eye pupil
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(-radius * 0.15, -radius * 0.4, radius * 0.12, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Eye highlight
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(-radius * 0.1, -radius * 0.45, radius * 0.06, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw mouth (chomping animation)
+    const mouthAngle = mouthOpen * Math.PI;
+    
+    // Upper jaw
+    ctx.fillStyle = gatorGreen;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, -mouthAngle, mouthAngle);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Lower jaw (darker)
+    ctx.fillStyle = darkGreen;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, mouthAngle, Math.PI * 2 - mouthAngle);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Mouth interior (black)
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius * 0.85, -mouthAngle, mouthAngle);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Draw teeth (white triangles)
+    if (mouthOpen > 0.3) {
+        ctx.fillStyle = '#ffffff';
+        const teethCount = 4;
+        const teethSize = radius * 0.15;
         
-        // Mouth
-        ctx.fillStyle = '#1a1a1a';
-        ctx.beginPath();
-        ctx.moveTo(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
-        ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0.2 * Math.PI, 1.8 * Math.PI);
-        ctx.closePath();
-        ctx.fill();
+        for (let i = 0; i < teethCount; i++) {
+            const angle = (i / teethCount) * mouthAngle * 2 - mouthAngle;
+            const toothX = Math.cos(angle) * radius * 0.85;
+            const toothY = Math.sin(angle) * radius * 0.85;
+            
+            // Upper teeth
+            ctx.beginPath();
+            ctx.moveTo(toothX, toothY);
+            ctx.lineTo(toothX - teethSize * 0.3, toothY + teethSize);
+            ctx.lineTo(toothX + teethSize * 0.3, toothY + teethSize);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Lower teeth
+            ctx.beginPath();
+            ctx.moveTo(toothX, -toothY);
+            ctx.lineTo(toothX - teethSize * 0.3, -toothY - teethSize);
+            ctx.lineTo(toothX + teethSize * 0.3, -toothY - teethSize);
+            ctx.closePath();
+            ctx.fill();
+        }
     }
+    
+    // Nostril
+    ctx.fillStyle = darkGreen;
+    ctx.beginPath();
+    ctx.arc(radius * 0.6, -radius * 0.15, radius * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
 }
 
 function draw() {
@@ -781,12 +886,35 @@ function draw() {
 }
 
 function update() {
+    // Always update particles even during death animation
+    particleSystem.updateParticles();
+    
+    // Handle death animation delay
+    if (deathAnimationTimer > 0) {
+        deathAnimationTimer--;
+        if (deathAnimationTimer === 0) {
+            // Animation finished, now pause for respawn
+            if (lives <= 0) {
+                // Game over - save session and show game over screen
+                saveGameSession();
+                showGameOver();
+            } else {
+                waitingForRespawn = true;
+                messageEl.textContent = 'Press any arrow key to continue';
+                // Reset positions
+                kiro.x = 14;
+                kiro.y = 23;
+                kiro.direction = null;
+                kiro.moveTimer = 0;
+                initGhosts();
+            }
+        }
+        return; // Don't update game logic during death animation
+    }
+    
     if (gameState !== 'playing' || isPaused || waitingForRespawn) return;
 
     frameCount++;
-    
-    // Update particles
-    particleSystem.updateParticles();
     
     // Create power effect particles around Kiro when powered
     if (powerPelletActive && frameCount % 5 === 0) {
@@ -837,7 +965,8 @@ function gameLoop() {
 
 // Pause menu functions
 function togglePause() {
-    if (gameState !== 'playing') return;
+    // Allow pause in both 'playing' and 'start' states
+    if (gameState !== 'playing' && gameState !== 'start') return;
     
     isPaused = !isPaused;
     const pauseMenu = document.getElementById('pauseMenu');
@@ -877,13 +1006,23 @@ function quitToStart() {
 document.addEventListener('keydown', (e) => {
     const key = e.key;
     
-    // Escape key for pause menu
+    // Escape key for pause menu - works in any state
     if (key === 'Escape') {
-        if (gameState === 'playing' && !waitingForRespawn) {
-            togglePause();
+        if (gameState === 'playing') {
+            if (isPaused) {
+                resumeGame();
+            } else {
+                // Clear waiting for respawn state if active
+                if (waitingForRespawn) {
+                    waitingForRespawn = false;
+                    messageEl.textContent = '';
+                }
+                togglePause();
+            }
             e.preventDefault();
-        } else if (isPaused) {
-            resumeGame();
+        } else if (gameState === 'start') {
+            // Allow escape to open pause menu from start state too
+            togglePause();
             e.preventDefault();
         }
         return;
@@ -938,6 +1077,15 @@ audioManager.initAudio();
 // Show start screen on load
 document.getElementById('startScreen').classList.remove('hidden');
 
+// Start background music after user interaction
+document.addEventListener('click', function startMusicOnInteraction() {
+    if (musicEnabled) {
+        backgroundMusic.start();
+    }
+    // Remove listener after first interaction
+    document.removeEventListener('click', startMusicOnInteraction);
+}, { once: true });
+
 
 
 // Start screen handlers
@@ -964,11 +1112,32 @@ document.getElementById('closeSettingsBtn').addEventListener('click', () => {
     document.getElementById('settingsScreen').classList.add('hidden');
 });
 
+// Game over screen handler
+document.getElementById('backToMenuBtn').addEventListener('click', () => {
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    document.getElementById('startScreen').classList.remove('hidden');
+    init();
+    gameState = 'menu';
+    messageEl.textContent = '';
+});
+
 // Settings handlers
 document.getElementById('soundToggle').addEventListener('click', function() {
     soundEnabled = !soundEnabled;
     this.classList.toggle('active');
     this.textContent = soundEnabled ? 'ON' : 'OFF';
+});
+
+document.getElementById('musicToggle').addEventListener('click', function() {
+    musicEnabled = !musicEnabled;
+    this.classList.toggle('active');
+    this.textContent = musicEnabled ? 'ON' : 'OFF';
+    
+    if (musicEnabled) {
+        backgroundMusic.start();
+    } else {
+        backgroundMusic.stop();
+    }
 });
 
 document.getElementById('difficultySelect').addEventListener('change', function() {
@@ -1012,6 +1181,35 @@ function showHowToPlay() {
 
 function showSettings() {
     document.getElementById('settingsScreen').classList.remove('hidden');
+}
+
+function showGameOver() {
+    // Display final score
+    document.getElementById('finalScore').textContent = score;
+    
+    // Load and display leaderboard
+    fetch('/api/highscores')
+        .then(res => res.json())
+        .then(scores => {
+            const leaderboardList = document.getElementById('gameOverLeaderboardList');
+            if (scores.length === 0) {
+                leaderboardList.innerHTML = '<p class="no-history">No scores yet</p>';
+            } else {
+                leaderboardList.innerHTML = scores.slice(0, 5).map((entry, index) => `
+                    <div class="leaderboard-entry ${index < 3 ? 'top-3' : ''}">
+                        <span class="leaderboard-rank">#${index + 1}</span>
+                        <span class="leaderboard-name">${entry.name}</span>
+                        <span class="leaderboard-score">${entry.score}</span>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        })
+        .catch(err => {
+            console.error('Error loading leaderboard:', err);
+            document.getElementById('gameOverLeaderboardList').innerHTML = '<p class="no-history">Error loading scores</p>';
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        });
 }
 
 gameLoop();
