@@ -150,12 +150,10 @@ class AudioManager {
                 this.loadingSounds++;
                 if (this.loadingSounds === this.totalSounds) {
                     this.loaded = true;
-                    console.log('All audio files loaded successfully');
                 }
             }, { once: true });
 
-            audio.addEventListener('error', (e) => {
-                console.warn(`Failed to load sound: ${soundName}`, e);
+            audio.addEventListener('error', () => {
                 this.loadingSounds++;
                 if (this.loadingSounds === this.totalSounds) {
                     this.loaded = true;
@@ -170,10 +168,7 @@ class AudioManager {
     playSound(soundName) {
         if (!soundEnabled) return; // Check if sound is enabled
         
-        if (!this.sounds[soundName]) {
-            console.warn(`Sound not found: ${soundName}`);
-            return;
-        }
+        if (!this.sounds[soundName]) return;
 
         try {
             // Clone the audio element to allow overlapping sounds
@@ -184,12 +179,12 @@ class AudioManager {
             const playPromise = sound.play();
             
             if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.warn(`Error playing sound ${soundName}:`, error);
+                playPromise.catch(() => {
+                    // Silently handle autoplay restrictions
                 });
             }
         } catch (error) {
-            console.warn(`Error playing sound ${soundName}:`, error);
+            // Silently handle errors
         }
     }
 
@@ -301,7 +296,7 @@ function loadHighScore() {
                 highScoreEl.textContent = highScore;
             }
         })
-        .catch(err => console.error('Error loading high scores:', err));
+        .catch(() => {});
 }
 
 function saveGameSession() {
@@ -321,8 +316,7 @@ function saveGameSession() {
         }
         return data;
     })
-    .catch(err => {
-        console.error('Error saving game session:', err);
+    .catch(() => {
         return null;
     });
 }
@@ -1525,6 +1519,33 @@ function setupDraggableMinimap() {
     minimap.addEventListener("mousemove", drag, false);
 }
 
+// Mobile pause button
+const mobilePauseBtn = document.getElementById('mobilePauseBtn');
+if (mobilePauseBtn) {
+    const handlePause = (e) => {
+        e.preventDefault();
+        
+        if (gameState === 'playing') {
+            if (isPaused) {
+                resumeGame();
+            } else {
+                // Clear waiting for respawn state if active
+                if (waitingForRespawn) {
+                    waitingForRespawn = false;
+                    messageEl.textContent = '';
+                }
+                togglePause();
+            }
+        } else if (gameState === 'start') {
+            // Allow pause to open pause menu from start state too
+            togglePause();
+        }
+    };
+    
+    mobilePauseBtn.addEventListener('click', handlePause);
+    mobilePauseBtn.addEventListener('touchstart', handlePause);
+}
+
 // Initialize and start
 init();
 audioManager.initAudio();
@@ -1650,8 +1671,7 @@ function showLeaderboard() {
             }
             document.getElementById('leaderboardScreen').classList.remove('hidden');
         })
-        .catch(err => {
-            console.error('Error loading leaderboard:', err);
+        .catch(() => {
             document.getElementById('leaderboardList').innerHTML = '<p class="no-history">Error loading scores</p>';
             document.getElementById('leaderboardScreen').classList.remove('hidden');
         });
@@ -1700,8 +1720,7 @@ function showGameOver() {
             }
             document.getElementById('gameOverScreen').classList.remove('hidden');
         })
-        .catch(err => {
-            console.error('Error loading leaderboard:', err);
+        .catch(() => {
             document.getElementById('gameOverLeaderboardList').innerHTML = '<p class="no-history">Error loading scores</p>';
             document.getElementById('gameOverScreen').classList.remove('hidden');
         });

@@ -118,6 +118,38 @@ h1 {
     }
 }
 
+/* Mobile Pause Button */
+.mobile-pause-btn {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    width: 50px;
+    height: 50px;
+    background: rgba(42, 42, 42, 0.9);
+    border: 2px solid #5CB54D;
+    border-radius: 8px;
+    color: #5CB54D;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 0 0 10px rgba(92, 181, 77, 0.5);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-pause-btn:active {
+    background: #5CB54D;
+    color: #0a0a0a;
+    transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+    .mobile-pause-btn {
+        display: block;
+    }
+}
+
 .message {
     margin-top: 20px;
     font-size: 0.8em;
