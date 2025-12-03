@@ -1535,6 +1535,10 @@ document.getElementById('closeHowToPlayBtn').addEventListener('click', () => {
 
 document.getElementById('closeSettingsBtn').addEventListener('click', () => {
     document.getElementById('settingsScreen').classList.add('hidden');
+    // If game is paused, show pause menu again
+    if (isPaused && gameState === 'playing') {
+        document.getElementById('pauseMenu').classList.remove('hidden');
+    }
 });
 
 // Game over screen handler
@@ -1572,6 +1576,10 @@ document.getElementById('difficultySelect').addEventListener('change', function(
 // Pause menu button handlers
 document.getElementById('resumeBtn').addEventListener('click', resumeGame);
 document.getElementById('restartBtn').addEventListener('click', restartGame);
+document.getElementById('pauseSettingsBtn').addEventListener('click', () => {
+    document.getElementById('pauseMenu').classList.add('hidden');
+    showSettings();
+});
 document.getElementById('quitBtn').addEventListener('click', quitToStart);
 
 // Menu functions
