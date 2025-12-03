@@ -1,9 +1,21 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const minimapCanvas = document.getElementById('minimapCanvas');
+const minimapCtx = minimapCanvas ? minimapCanvas.getContext('2d') : null;
 const scoreEl = document.getElementById('score');
 const livesEl = document.getElementById('lives');
 const highScoreEl = document.getElementById('highScore');
 const messageEl = document.getElementById('message');
+
+// Mobile zoom settings
+let isMobile = window.innerWidth <= 768;
+let cameraX = 0;
+let cameraY = 0;
+const ZOOM_TILES = 15; // Show 15x15 tiles on mobile
+
+window.addEventListener('resize', () => {
+    isMobile = window.innerWidth <= 768;
+});
 
 // Game constants
 const TILE_SIZE = 25;
@@ -960,9 +972,33 @@ function draw() {
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Calculate camera position for mobile zoom
+    if (isMobile) {
+        // Center camera on Kiro
+        cameraX = Math.max(0, Math.min(COLS - ZOOM_TILES, kiro.x - ZOOM_TILES / 2));
+        cameraY = Math.max(0, Math.min(ROWS - ZOOM_TILES, kiro.y - ZOOM_TILES / 2));
+    } else {
+        cameraX = 0;
+        cameraY = 0;
+    }
+
+    ctx.save();
+    
+    if (isMobile) {
+        // Zoom in on mobile
+        const scale = canvas.width / (ZOOM_TILES * TILE_SIZE);
+        ctx.scale(scale, scale);
+        ctx.translate(-cameraX * TILE_SIZE, -cameraY * TILE_SIZE);
+    }
+
     // Draw maze
-    for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
+    const startX = isMobile ? Math.floor(cameraX) : 0;
+    const startY = isMobile ? Math.floor(cameraY) : 0;
+    const endX = isMobile ? Math.ceil(cameraX + ZOOM_TILES) : COLS;
+    const endY = isMobile ? Math.ceil(cameraY + ZOOM_TILES) : ROWS;
+    
+    for (let y = startY; y < endY && y < ROWS; y++) {
+        for (let x = startX; x < endX && x < COLS; x++) {
             const tile = maze[y][x];
             if (tile === 1) {
                 // Wall
@@ -994,6 +1030,95 @@ function draw() {
     
     // Draw particles
     particleSystem.drawParticles(ctx);
+    
+    ctx.restore();
+    
+    // Draw minimap on mobile
+    if (isMobile && minimapCtx) {
+        drawMinimap();
+    }
+}
+
+function drawMinimap() {
+    const minimapWidth = 120;
+    const minimapHeight = 120;
+    const tileWidth = minimapWidth / COLS;
+    const tileHeight = minimapHeight / ROWS;
+    
+    // Clear and fill background
+    minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    minimapCtx.fillRect(0, 0, minimapWidth, minimapHeight);
+    
+    // Draw maze on minimap
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            const tile = maze[y][x];
+            if (tile === 1) {
+                // Walls
+                minimapCtx.fillStyle = '#2563eb';
+                minimapCtx.fillRect(x * tileWidth, y * tileHeight, tileWidth, tileHeight);
+            } else if (tile === 2) {
+                // Dots
+                minimapCtx.fillStyle = '#5CB54D';
+                minimapCtx.fillRect(x * tileWidth + tileWidth/3, y * tileHeight + tileHeight/3, tileWidth/3, tileHeight/3);
+            } else if (tile === 3) {
+                // Power pellets
+                minimapCtx.fillStyle = '#FFD700';
+                minimapCtx.beginPath();
+                minimapCtx.arc(x * tileWidth + tileWidth/2, y * tileHeight + tileHeight/2, Math.max(tileWidth, tileHeight) * 0.4, 0, Math.PI * 2);
+                minimapCtx.fill();
+            }
+        }
+    }
+    
+    // Draw ghosts on minimap
+    ghosts.forEach(ghost => {
+        if (ghost.scared) {
+            // Scared ghosts: bright cyan with white outline
+            minimapCtx.fillStyle = '#00FFFF';
+            minimapCtx.strokeStyle = '#FFFFFF';
+            minimapCtx.lineWidth = 1.5;
+        } else {
+            // Normal ghosts: their color
+            minimapCtx.fillStyle = ghost.color;
+            minimapCtx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+            minimapCtx.lineWidth = 1;
+        }
+        
+        minimapCtx.beginPath();
+        minimapCtx.arc(
+            ghost.x * tileWidth + tileWidth/2, 
+            ghost.y * tileHeight + tileHeight/2, 
+            Math.max(tileWidth, tileHeight) * 0.6, 
+            0, Math.PI * 2
+        );
+        minimapCtx.fill();
+        minimapCtx.stroke();
+    });
+    
+    // Draw Kiro on minimap (on top)
+    minimapCtx.fillStyle = '#5CB54D';
+    minimapCtx.strokeStyle = '#FFD700';
+    minimapCtx.lineWidth = 1;
+    minimapCtx.beginPath();
+    minimapCtx.arc(
+        kiro.x * tileWidth + tileWidth/2, 
+        kiro.y * tileHeight + tileHeight/2, 
+        Math.max(tileWidth, tileHeight) * 0.7, 
+        0, Math.PI * 2
+    );
+    minimapCtx.fill();
+    minimapCtx.stroke();
+    
+    // Draw camera view rectangle
+    minimapCtx.strokeStyle = '#FFD700';
+    minimapCtx.lineWidth = 2;
+    minimapCtx.strokeRect(
+        cameraX * tileWidth,
+        cameraY * tileHeight,
+        ZOOM_TILES * tileWidth,
+        ZOOM_TILES * tileHeight
+    );
 }
 
 function update() {
@@ -1238,9 +1363,124 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// Mobile touch controls
+function setupMobileControls() {
+    const upBtn = document.getElementById('upBtn');
+    const downBtn = document.getElementById('downBtn');
+    const leftBtn = document.getElementById('leftBtn');
+    const rightBtn = document.getElementById('rightBtn');
+    
+    if (upBtn) {
+        upBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleDirectionInput('up');
+        });
+        upBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleDirectionInput('up');
+        });
+    }
+    
+    if (downBtn) {
+        downBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleDirectionInput('down');
+        });
+        downBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleDirectionInput('down');
+        });
+    }
+    
+    if (leftBtn) {
+        leftBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleDirectionInput('left');
+        });
+        leftBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleDirectionInput('left');
+        });
+    }
+    
+    if (rightBtn) {
+        rightBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleDirectionInput('right');
+        });
+        rightBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleDirectionInput('right');
+        });
+    }
+}
+
+function handleDirectionInput(direction) {
+    if (gameState === 'start') {
+        gameState = 'playing';
+        messageEl.textContent = '';
+        audioManager.playSound('gameStart');
+    } else if (gameState === 'gameOver') {
+        init();
+        gameState = 'playing';
+        messageEl.textContent = '';
+    } else if (gameState === 'levelComplete') {
+        currentLevel++;
+        
+        // Reset character positions
+        kiro.x = 14;
+        kiro.y = 23;
+        kiro.direction = null;
+        kiro.nextDirection = null;
+        kiro.moveTimer = 0;
+        initGhosts();
+        
+        // Clear power pellet state
+        powerPelletActive = false;
+        powerPelletTimer = 0;
+        
+        if (currentLevel <= ENDLESS_MODE_LEVEL) {
+            copyMaze();
+        }
+        
+        if (currentLevel > ENDLESS_MODE_LEVEL) {
+            endlessMode = true;
+            randomDotTimer = 0;
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    if (maze[y][x] === 2) {
+                        maze[y][x] = 0;
+                    }
+                }
+            }
+        }
+        
+        gameState = 'playing';
+        messageEl.textContent = endlessMode ? 'Endless Mode Active!' : `Level ${currentLevel}`;
+        updateUI();
+        setTimeout(() => {
+            if (gameState === 'playing') messageEl.textContent = '';
+        }, 2000);
+    } else if (gameState === 'playing') {
+        if (waitingForRespawn) {
+            waitingForRespawn = false;
+            messageEl.textContent = '';
+            return;
+        }
+        
+        if (!isPaused) {
+            if (direction === 'up') kiro.nextDirection = 'up';
+            else if (direction === 'down') kiro.nextDirection = 'down';
+            else if (direction === 'left') kiro.nextDirection = 'left';
+            else if (direction === 'right') kiro.nextDirection = 'right';
+        }
+    }
+}
+
 // Initialize and start
 init();
 audioManager.initAudio();
+setupMobileControls();
 
 // Show start screen on load
 document.getElementById('startScreen').classList.remove('hidden');

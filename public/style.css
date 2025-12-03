@@ -13,10 +13,24 @@ body {
     align-items: center;
     min-height: 100vh;
     padding: 20px;
+    overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
 }
 
 .game-container {
     text-align: center;
+    max-width: 100%;
+}
+
+@media (max-width: 768px) {
+    .game-container {
+        width: 100%;
+    }
 }
 
 .header {
@@ -31,12 +45,26 @@ h1 {
     font-family: 'Press Start 2P', cursive;
 }
 
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.5em;
+    }
+}
+
 .stats {
     display: flex;
     justify-content: center;
     gap: 30px;
     font-size: 0.9em;
     font-family: 'Press Start 2P', cursive;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .stats {
+        font-size: 0.6em;
+        gap: 15px;
+    }
 }
 
 .score, .lives, .high-score {
@@ -54,6 +82,37 @@ h1 {
     box-shadow: 0 0 20px rgba(92, 181, 77, 0.3);
     display: block;
     margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+}
+
+@media (max-width: 768px) {
+    #gameCanvas {
+        width: 100%;
+        height: auto;
+        border-width: 2px;
+    }
+}
+
+/* Minimap */
+.minimap {
+    display: none;
+    position: fixed;
+    top: 80px;
+    right: 10px;
+    width: 120px;
+    height: 120px;
+    border: 2px solid #5CB54D;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(92, 181, 77, 0.5);
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+@media (max-width: 768px) {
+    .minimap {
+        display: block;
+    }
 }
 
 .message {
@@ -235,6 +294,77 @@ h1 {
 
 .primary-btn:hover {
     box-shadow: 0 0 30px rgba(92, 181, 77, 0.8) !important;
+}
+
+/* Mobile Touch Controls */
+.mobile-controls {
+    display: none;
+    margin-top: 20px;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+@media (max-width: 768px) {
+    .mobile-controls {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+.control-row {
+    display: flex;
+    gap: 10px;
+}
+
+.control-btn {
+    width: 60px;
+    height: 60px;
+    background: #2a2a2a;
+    border: 2px solid #5CB54D;
+    border-radius: 8px;
+    color: #5CB54D;
+    font-size: 24px;
+    font-family: 'Press Start 2P', cursive;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.control-btn:active {
+    background: #5CB54D;
+    color: #0a0a0a;
+    transform: scale(0.95);
+}
+
+.control-btn.spacer {
+    opacity: 0;
+    pointer-events: none;
+    border: none;
+}
+
+@media (max-width: 768px) {
+    .modal-content {
+        max-width: 90%;
+        padding: 20px;
+    }
+    
+    .game-title {
+        font-size: 32px;
+    }
+    
+    .tagline {
+        font-size: 10px;
+    }
+    
+    .main-menu-btn {
+        width: 250px;
+        font-size: 10px;
+        padding: 15px 20px;
+    }
 }
 
 /* Start Screen */
