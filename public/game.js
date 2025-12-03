@@ -391,10 +391,8 @@ function moveKiro() {
 
             // Check win condition
             if (checkWin()) {
-                // Just restore the dots, keep everything else as is
-                copyMaze();
-                // Keep Kiro and ghost positions, direction, score, lives
-                // Game continues seamlessly
+                gameState = 'levelComplete';
+                messageEl.textContent = 'Level Complete! Press any arrow key to continue';
             }
         }
     }
@@ -937,9 +935,10 @@ function update() {
         if (deathAnimationTimer === 0) {
             // Animation finished, now pause for respawn
             if (lives <= 0) {
-                // Game over - save session and show game over screen
-                saveGameSession();
+                // Game over - show game over screen immediately
                 showGameOver();
+                // Save session in background
+                saveGameSession();
             } else {
                 waitingForRespawn = true;
                 messageEl.textContent = 'Press any arrow key to continue';
@@ -1077,9 +1076,17 @@ document.addEventListener('keydown', (e) => {
             audioManager.playSound('gameStart');
             e.preventDefault();
         }
-    } else if (gameState === 'gameOver' || gameState === 'levelComplete') {
+    } else if (gameState === 'gameOver') {
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
             init();
+            gameState = 'playing';
+            messageEl.textContent = '';
+            e.preventDefault();
+        }
+    } else if (gameState === 'levelComplete') {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+            // Restore the dots but keep score and lives
+            copyMaze();
             gameState = 'playing';
             messageEl.textContent = '';
             e.preventDefault();
@@ -1254,13 +1261,26 @@ function showGameOver() {
             if (scores.length === 0) {
                 leaderboardList.innerHTML = '<p class="no-history">No scores yet</p>';
             } else {
-                leaderboardList.innerHTML = scores.slice(0, 5).map((entry, index) => `
-                    <div class="leaderboard-entry ${index < 3 ? 'top-3' : ''}">
-                        <span class="leaderboard-rank">#${index + 1}</span>
-                        <span class="leaderboard-name">${entry.name}</span>
-                        <span class="leaderboard-score">${entry.score}</span>
-                    </div>
-                `).join('');
+                // Find current score's rank
+                let currentRank = scores.findIndex(entry => entry.score === score) + 1;
+                if (currentRank === 0) {
+                    // Score not in list yet, find where it would be
+                    currentRank = scores.filter(entry => entry.score > score).length + 1;
+                }
+                
+                leaderboardList.innerHTML = scores.slice(0, 5).map((entry, index) => {
+                    const rank = index + 1;
+                    const isCurrentScore = entry.score === score && rank === currentRank;
+                    const highlightClass = isCurrentScore ? 'current-score' : (index < 3 ? 'top-3' : '');
+                    
+                    return `
+                        <div class="leaderboard-entry ${highlightClass}">
+                            <span class="leaderboard-rank">#${rank}</span>
+                            <span class="leaderboard-name">${entry.name}${isCurrentScore ? ' (You)' : ''}</span>
+                            <span class="leaderboard-score">${entry.score}</span>
+                        </div>
+                    `;
+                }).join('');
             }
             document.getElementById('gameOverScreen').classList.remove('hidden');
         })
