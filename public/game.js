@@ -29,10 +29,15 @@ let deathAnimationTimer = 0;
 let soundEnabled = true;
 let musicEnabled = true;
 let difficulty = 'normal';
+let currentLevel = 1;
+let endlessMode = false;
+let randomDotTimer = 0;
 const POWER_PELLET_DURATION = 300; // frames
 const POWER_PELLET_RESPAWN_TIME = 600; // frames (10 seconds at 60fps)
 const MAX_POWER_PELLETS = 4;
 const DEATH_ANIMATION_DELAY = 60; // frames (~1 second at 60fps)
+const RANDOM_DOT_SPAWN_INTERVAL = 120; // frames (2 seconds at 60fps)
+const ENDLESS_MODE_LEVEL = 4; // Switch to endless mode after level 3
 
 // Power pellet positions (from original maze)
 const powerPelletPositions = [
@@ -196,10 +201,25 @@ const difficultySettings = {
 
 function getSpeed(type) {
     const settings = difficultySettings[difficulty];
-    if (type === 'kiro') return settings.kiroSpeed;
-    if (type === 'ghost') return settings.ghostSpeed;
-    if (type === 'scared') return settings.scaredSpeed;
-    return KIRO_SPEED;
+    let speed;
+    
+    if (type === 'kiro') {
+        speed = settings.kiroSpeed;
+    } else if (type === 'ghost') {
+        speed = settings.ghostSpeed;
+    } else if (type === 'scared') {
+        speed = settings.scaredSpeed;
+    } else {
+        return KIRO_SPEED;
+    }
+    
+    // Apply level-based speed increase (ghosts get faster each level)
+    if (type === 'ghost' || type === 'scared') {
+        const levelMultiplier = Math.max(0.5, 1 - ((currentLevel - 1) * 0.08)); // Max 50% faster
+        speed = Math.floor(speed * levelMultiplier);
+    }
+    
+    return speed;
 }
 
 function initGhosts() {
@@ -229,8 +249,39 @@ function init() {
     frameCount = 0;
     powerPelletActive = false;
     powerPelletTimer = 0;
+    currentLevel = 1;
+    endlessMode = false;
+    randomDotTimer = 0;
     updateUI();
     loadHighScore();
+}
+
+function spawnRandomDot() {
+    // Find all empty spaces in the maze
+    const emptySpaces = [];
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            // Only spawn in empty spaces (not walls, not existing dots/pellets)
+            if (maze[y][x] === 0) {
+                // Don't spawn too close to Kiro or ghosts
+                const tooCloseToKiro = Math.abs(x - kiro.x) < 3 && Math.abs(y - kiro.y) < 3;
+                const tooCloseToGhost = ghosts.some(g => Math.abs(x - g.x) < 2 && Math.abs(y - g.y) < 2);
+                
+                if (!tooCloseToKiro && !tooCloseToGhost) {
+                    emptySpaces.push({ x, y });
+                }
+            }
+        }
+    }
+    
+    // Spawn a dot in a random empty space
+    if (emptySpaces.length > 0) {
+        const randomSpace = emptySpaces[Math.floor(Math.random() * emptySpaces.length)];
+        maze[randomSpace.y][randomSpace.x] = 2; // Spawn a regular dot
+        
+        // Create particle effect at spawn location
+        particleSystem.createPowerEffect(randomSpace.x, randomSpace.y, TILE_SIZE);
+    }
 }
 
 function loadHighScore() {
@@ -247,7 +298,7 @@ function loadHighScore() {
 
 function saveGameSession() {
     // Always save game session on game over
-    fetch('/api/highscores', {
+    return fetch('/api/highscores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ score: score, name: 'Player' })
@@ -260,8 +311,12 @@ function saveGameSession() {
             highScore = score;
             highScoreEl.textContent = highScore;
         }
+        return data;
     })
-    .catch(err => console.error('Error saving game session:', err));
+    .catch(err => {
+        console.error('Error saving game session:', err);
+        return null;
+    });
 }
 
 function loadGameHistory() {
@@ -304,6 +359,10 @@ function displayGameHistory(history) {
 function updateUI() {
     scoreEl.textContent = score;
     livesEl.textContent = lives;
+    const levelEl = document.getElementById('level');
+    if (levelEl) {
+        levelEl.textContent = endlessMode ? '∞' : currentLevel;
+    }
 }
 
 function canMove(x, y, isGhost = false, ghostObj = null) {
@@ -391,8 +450,18 @@ function moveKiro() {
 
             // Check win condition
             if (checkWin()) {
-                gameState = 'levelComplete';
-                messageEl.textContent = 'Level Complete! Press any arrow key to continue';
+                if (currentLevel < ENDLESS_MODE_LEVEL) {
+                    // Structured levels 1-3
+                    gameState = 'levelComplete';
+                    messageEl.textContent = `Level ${currentLevel} Complete! Press any arrow key to continue`;
+                } else if (currentLevel === ENDLESS_MODE_LEVEL && !endlessMode) {
+                    // Transition to endless mode
+                    gameState = 'levelComplete';
+                    messageEl.textContent = 'Entering Endless Mode! Dots will respawn randomly!';
+                } else {
+                    // Already in endless mode, shouldn't happen but just in case
+                    endlessMode = true;
+                }
             }
         }
     }
@@ -590,9 +659,11 @@ function checkCollisions() {
 }
 
 function checkWin() {
+    // Only check for regular dots (2), not power pellets (3)
+    // Power pellets respawn, so they shouldn't prevent level completion
     for (let row of maze) {
         for (let tile of row) {
-            if (tile === 2 || tile === 3) return false;
+            if (tile === 2) return false;
         }
     }
     return true;
@@ -934,11 +1005,11 @@ function update() {
         deathAnimationTimer--;
         if (deathAnimationTimer === 0) {
             // Animation finished, now pause for respawn
-            if (lives <= 0) {
-                // Game over - show game over screen immediately
-                showGameOver();
-                // Save session in background
-                saveGameSession();
+            if (gameState === 'gameOver') {
+                // Save session first, then show game over screen with updated leaderboard
+                saveGameSession().then(() => {
+                    showGameOver();
+                });
             } else {
                 waitingForRespawn = true;
                 messageEl.textContent = 'Press any arrow key to continue';
@@ -990,6 +1061,15 @@ function update() {
                 }
             }
         });
+    }
+
+    // Endless mode: spawn random dots
+    if (endlessMode) {
+        randomDotTimer++;
+        if (randomDotTimer >= RANDOM_DOT_SPAWN_INTERVAL) {
+            spawnRandomDot();
+            randomDotTimer = 0;
+        }
     }
 
     // Move Kiro and ghosts independently
@@ -1085,10 +1165,49 @@ document.addEventListener('keydown', (e) => {
         }
     } else if (gameState === 'levelComplete') {
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
-            // Restore the dots but keep score and lives
-            copyMaze();
+            currentLevel++;
+            
+            // Reset character positions
+            kiro.x = 14;
+            kiro.y = 23;
+            kiro.direction = null;
+            kiro.nextDirection = null;
+            kiro.moveTimer = 0;
+            initGhosts();
+            
+            // Clear power pellet state
+            powerPelletActive = false;
+            powerPelletTimer = 0;
+            
+            if (currentLevel <= ENDLESS_MODE_LEVEL) {
+                // Restore the dots but keep score and lives
+                copyMaze();
+                
+                // Increase difficulty: make ghosts faster
+                const speedMultiplier = 1 - (currentLevel * 0.1); // 10% faster each level
+                // This will be applied through the getSpeed function
+            }
+            
+            if (currentLevel > ENDLESS_MODE_LEVEL) {
+                // Enter endless mode
+                endlessMode = true;
+                randomDotTimer = 0;
+                // Clear all dots, they'll spawn randomly
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (maze[y][x] === 2) {
+                            maze[y][x] = 0;
+                        }
+                    }
+                }
+            }
+            
             gameState = 'playing';
-            messageEl.textContent = '';
+            messageEl.textContent = endlessMode ? 'Endless Mode Active!' : `Level ${currentLevel}`;
+            updateUI(); // Make sure UI updates with new level
+            setTimeout(() => {
+                if (gameState === 'playing') messageEl.textContent = '';
+            }, 2000);
             e.preventDefault();
         }
     } else if (gameState === 'playing') {
