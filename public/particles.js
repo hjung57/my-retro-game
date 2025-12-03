@@ -74,7 +74,7 @@ class ParticleSystem {
                 vy: (Math.random() - 0.5) * 0.5,
                 life: 20,
                 maxLife: 20,
-                color: '#5CB54D',
+                color: '#FFD700',
                 size: 2 + Math.random() * 2,
                 type: 'power'
             };

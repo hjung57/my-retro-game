@@ -703,6 +703,145 @@ function drawGhost(ctx, x, y, color, scared, direction, frameCount) {
     }
 }
 
+function drawAlligatorHead(ctx, x, y, frameCount, mouthOpen, rotation) {
+    const centerX = x;
+    const centerY = y;
+    const size = 50;
+    
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation);
+    
+    // Alligator colors (matching the image)
+    const gatorGreen = '#5CB54D';
+    const darkOutline = '#2a4a3a';
+    
+    // Draw outline/shadow first
+    ctx.fillStyle = darkOutline;
+    ctx.strokeStyle = darkOutline;
+    ctx.lineWidth = 4;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    
+    // Main body outline path
+    ctx.beginPath();
+    // Back of head (rounded)
+    ctx.arc(-size * 0.3, 0, size * 0.6, Math.PI * 0.6, Math.PI * 1.4);
+    // Top bumpy ridge
+    ctx.lineTo(-size * 0.2, -size * 0.6);
+    ctx.lineTo(0, -size * 0.5);
+    ctx.lineTo(size * 0.2, -size * 0.55);
+    ctx.lineTo(size * 0.4, -size * 0.5);
+    // Top of snout
+    ctx.lineTo(size * 1.2, -size * 0.25);
+    // Snout tip with teeth
+    ctx.lineTo(size * 1.3, -size * 0.15);
+    ctx.lineTo(size * 1.35, 0);
+    ctx.lineTo(size * 1.3, size * 0.15);
+    ctx.lineTo(size * 1.2, size * 0.25);
+    // Bottom of snout
+    ctx.lineTo(size * 0.4, size * 0.4);
+    ctx.lineTo(-size * 0.2, size * 0.5);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fill();
+    
+    // Draw main green body
+    ctx.fillStyle = gatorGreen;
+    ctx.beginPath();
+    // Back of head
+    ctx.arc(-size * 0.3, 0, size * 0.55, Math.PI * 0.6, Math.PI * 1.4);
+    // Top bumpy ridge
+    ctx.lineTo(-size * 0.2, -size * 0.55);
+    ctx.lineTo(0, -size * 0.45);
+    ctx.lineTo(size * 0.2, -size * 0.5);
+    ctx.lineTo(size * 0.4, -size * 0.45);
+    // Top of snout
+    ctx.lineTo(size * 1.2, -size * 0.2);
+    // Snout tip
+    ctx.lineTo(size * 1.3, -size * 0.1);
+    ctx.lineTo(size * 1.35, 0);
+    ctx.lineTo(size * 1.3, size * 0.1);
+    ctx.lineTo(size * 1.2, size * 0.2);
+    // Bottom of snout
+    ctx.lineTo(size * 0.4, size * 0.35);
+    ctx.lineTo(-size * 0.2, size * 0.45);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Draw eye socket bump
+    ctx.fillStyle = gatorGreen;
+    ctx.beginPath();
+    ctx.arc(size * 0.1, -size * 0.3, size * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = darkOutline;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    
+    // Draw eye (dark oval)
+    ctx.fillStyle = darkOutline;
+    ctx.beginPath();
+    ctx.ellipse(size * 0.1, -size * 0.3, size * 0.12, size * 0.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw nostril
+    ctx.fillStyle = darkOutline;
+    ctx.beginPath();
+    ctx.arc(size * 1.15, -size * 0.05, size * 0.06, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw mouth line and teeth
+    if (mouthOpen > 0.2) {
+        // Mouth opening
+        ctx.fillStyle = darkOutline;
+        ctx.beginPath();
+        ctx.moveTo(size * 0.3, 0);
+        ctx.lineTo(size * 1.2, 0);
+        ctx.lineTo(size * 1.2, size * 0.15 * mouthOpen);
+        ctx.lineTo(size * 0.3, size * 0.1 * mouthOpen);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Teeth (triangular)
+        ctx.fillStyle = '#ffffff';
+        const teethPositions = [0.5, 0.7, 0.9, 1.1];
+        teethPositions.forEach(pos => {
+            // Upper teeth
+            ctx.beginPath();
+            ctx.moveTo(size * pos, -size * 0.02);
+            ctx.lineTo(size * pos - size * 0.08, size * 0.08);
+            ctx.lineTo(size * pos + size * 0.08, size * 0.08);
+            ctx.closePath();
+            ctx.fill();
+        });
+    } else {
+        // Closed mouth line
+        ctx.strokeStyle = darkOutline;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(size * 0.3, 0);
+        ctx.lineTo(size * 1.25, 0);
+        ctx.stroke();
+    }
+    
+    // Draw leg/arm bumps at bottom
+    ctx.fillStyle = gatorGreen;
+    ctx.strokeStyle = darkOutline;
+    ctx.lineWidth = 3;
+    // First leg
+    ctx.beginPath();
+    ctx.arc(-size * 0.4, size * 0.4, size * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Second leg
+    ctx.beginPath();
+    ctx.arc(size * 0.1, size * 0.45, size * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.restore();
+}
+
 function drawKiroWithPowerEffect(ctx, x, y, frameCount) {
     const centerX = x * TILE_SIZE + TILE_SIZE / 2;
     const centerY = y * TILE_SIZE + TILE_SIZE / 2;
@@ -713,7 +852,7 @@ function drawKiroWithPowerEffect(ctx, x, y, frameCount) {
         const pulseSpeed = 0.05;
         const pulseSize = 3 + Math.sin(frameCount * pulseSpeed) * 2;
         
-        ctx.strokeStyle = '#5CB54D';
+        ctx.strokeStyle = '#FFD700';
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius + pulseSize, 0, Math.PI * 2);
@@ -721,127 +860,30 @@ function drawKiroWithPowerEffect(ctx, x, y, frameCount) {
     }
     
     // Mouth animation - snaps open and closed
-    const mouthCycle = Math.floor(frameCount / 8) % 2; // Toggle every 8 frames
-    const mouthOpen = kiro.direction ? (mouthCycle === 0 ? 0.6 : 0.2) : 0.1; // Wider when moving
+    const mouthCycle = Math.floor(frameCount / 8) % 2;
+    const mouthOpen = kiro.direction ? (mouthCycle === 0 ? 0.7 : 0.3) : 0.2;
     
-    // Determine rotation based on direction
+    // Determine rotation and flip based on direction
     let rotation = 0;
-    if (kiro.direction === 'right') rotation = 0;
-    else if (kiro.direction === 'down') rotation = Math.PI / 2;
-    else if (kiro.direction === 'left') rotation = Math.PI;
-    else if (kiro.direction === 'up') rotation = -Math.PI / 2;
+    let flipX = 1;
+    let flipY = 1;
     
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(rotation);
-    
-    // Alligator green colors
-    const gatorGreen = '#5CB54D';
-    const darkGreen = '#4a9a3d';
-    const scaleGreen = '#6dc55e';
-    
-    // Draw alligator head body (circle)
-    ctx.fillStyle = gatorGreen;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Add texture/scales with gradient
-    const gradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, radius);
-    gradient.addColorStop(0, scaleGreen);
-    gradient.addColorStop(0.7, gatorGreen);
-    gradient.addColorStop(1, darkGreen);
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Draw snout ridge (darker green bump on top)
-    ctx.fillStyle = darkGreen;
-    ctx.beginPath();
-    ctx.ellipse(radius * 0.3, -radius * 0.3, radius * 0.4, radius * 0.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Draw eye (white with dark pupil)
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(-radius * 0.2, -radius * 0.4, radius * 0.25, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Eye pupil
-    ctx.fillStyle = '#1a1a1a';
-    ctx.beginPath();
-    ctx.arc(-radius * 0.15, -radius * 0.4, radius * 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Eye highlight
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(-radius * 0.1, -radius * 0.45, radius * 0.06, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Draw mouth (chomping animation)
-    const mouthAngle = mouthOpen * Math.PI;
-    
-    // Upper jaw
-    ctx.fillStyle = gatorGreen;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, radius, -mouthAngle, mouthAngle);
-    ctx.closePath();
-    ctx.fill();
-    
-    // Lower jaw (darker)
-    ctx.fillStyle = darkGreen;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, radius, mouthAngle, Math.PI * 2 - mouthAngle);
-    ctx.closePath();
-    ctx.fill();
-    
-    // Mouth interior (black)
-    ctx.fillStyle = '#1a1a1a';
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, radius * 0.85, -mouthAngle, mouthAngle);
-    ctx.closePath();
-    ctx.fill();
-    
-    // Draw teeth (white triangles)
-    if (mouthOpen > 0.3) {
-        ctx.fillStyle = '#ffffff';
-        const teethCount = 4;
-        const teethSize = radius * 0.15;
-        
-        for (let i = 0; i < teethCount; i++) {
-            const angle = (i / teethCount) * mouthAngle * 2 - mouthAngle;
-            const toothX = Math.cos(angle) * radius * 0.85;
-            const toothY = Math.sin(angle) * radius * 0.85;
-            
-            // Upper teeth
-            ctx.beginPath();
-            ctx.moveTo(toothX, toothY);
-            ctx.lineTo(toothX - teethSize * 0.3, toothY + teethSize);
-            ctx.lineTo(toothX + teethSize * 0.3, toothY + teethSize);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Lower teeth
-            ctx.beginPath();
-            ctx.moveTo(toothX, -toothY);
-            ctx.lineTo(toothX - teethSize * 0.3, -toothY - teethSize);
-            ctx.lineTo(toothX + teethSize * 0.3, -toothY - teethSize);
-            ctx.closePath();
-            ctx.fill();
-        }
+    if (kiro.direction === 'right') {
+        rotation = 0;
+    } else if (kiro.direction === 'down') {
+        rotation = Math.PI / 2;
+    } else if (kiro.direction === 'left') {
+        rotation = 0;
+        flipX = -1; // Flip horizontally instead of rotating
+    } else if (kiro.direction === 'up') {
+        rotation = -Math.PI / 2;
     }
     
-    // Nostril
-    ctx.fillStyle = darkGreen;
-    ctx.beginPath();
-    ctx.arc(radius * 0.6, -radius * 0.15, radius * 0.08, 0, Math.PI * 2);
-    ctx.fill();
-    
+    // Scale down for game tile
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.scale(0.4 * flipX, 0.4 * flipY);
+    drawAlligatorHead(ctx, 0, 0, frameCount, mouthOpen, rotation);
     ctx.restore();
 }
 
@@ -1076,6 +1118,23 @@ audioManager.initAudio();
 
 // Show start screen on load
 document.getElementById('startScreen').classList.remove('hidden');
+
+// Draw animated gator logo on start screen
+const logoCanvas = document.getElementById('gatorLogoCanvas');
+if (logoCanvas) {
+    const logoCtx = logoCanvas.getContext('2d');
+    let logoFrame = 0;
+    
+    function animateLogo() {
+        logoCtx.clearRect(0, 0, 120, 120);
+        const mouthCycle = Math.floor(logoFrame / 30) % 2;
+        const mouthOpen = mouthCycle === 0 ? 0.6 : 0.2;
+        drawAlligatorHead(logoCtx, 60, 60, logoFrame, mouthOpen, 0);
+        logoFrame++;
+        requestAnimationFrame(animateLogo);
+    }
+    animateLogo();
+}
 
 // Start background music after user interaction
 document.addEventListener('click', function startMusicOnInteraction() {
