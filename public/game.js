@@ -50,6 +50,7 @@ const MAX_POWER_PELLETS = 4;
 const DEATH_ANIMATION_DELAY = 60; // frames (~1 second at 60fps)
 const RANDOM_DOT_SPAWN_INTERVAL = 120; // frames (2 seconds at 60fps)
 const ENDLESS_MODE_LEVEL = 4; // Switch to endless mode after level 3
+const GHOST_RESPAWN_DELAY = 180; // frames (3 seconds at 60fps)
 
 // Power pellet positions (from original maze)
 const powerPelletPositions = [
@@ -237,10 +238,10 @@ function getSpeed(type) {
 function initGhosts() {
     // Spawn all ghosts in the same row inside the ghost house
     ghosts = [
-        { x: 12, y: 14, direction: 'up', moveTimer: 0, color: ghostColors[0], scared: false, startX: 12, startY: 14, inHouse: true },
-        { x: 13, y: 14, direction: 'up', moveTimer: 40, color: ghostColors[1], scared: false, startX: 13, startY: 14, inHouse: true },
-        { x: 14, y: 14, direction: 'up', moveTimer: 80, color: ghostColors[2], scared: false, startX: 14, startY: 14, inHouse: true },
-        { x: 15, y: 14, direction: 'up', moveTimer: 120, color: ghostColors[3], scared: false, startX: 15, startY: 14, inHouse: true }
+        { x: 12, y: 14, direction: 'up', moveTimer: 0, color: ghostColors[0], scared: false, startX: 12, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false },
+        { x: 13, y: 14, direction: 'up', moveTimer: 40, color: ghostColors[1], scared: false, startX: 13, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false },
+        { x: 14, y: 14, direction: 'up', moveTimer: 80, color: ghostColors[2], scared: false, startX: 14, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false },
+        { x: 15, y: 14, direction: 'up', moveTimer: 120, color: ghostColors[3], scared: false, startX: 15, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false }
     ];
 }
 
@@ -495,6 +496,22 @@ function isGhostAt(x, y, excludeIndex) {
 
 function moveGhosts() {
     ghosts.forEach((ghost, index) => {
+        // Handle respawn timer
+        if (ghost.isRespawning) {
+            ghost.respawnTimer--;
+            if (ghost.respawnTimer <= 0) {
+                // Respawn ghost at starting position
+                ghost.x = ghost.startX;
+                ghost.y = ghost.startY;
+                ghost.scared = false;
+                ghost.inHouse = true;
+                ghost.direction = 'up';
+                ghost.isRespawning = false;
+                ghost.respawnTimer = 0;
+            }
+            return; // Don't move while respawning
+        }
+        
         // Always decrement timer
         if (ghost.moveTimer > 0) {
             ghost.moveTimer--;
@@ -636,18 +653,22 @@ function moveGhosts() {
 
 function checkCollisions() {
     ghosts.forEach((ghost) => {
+        // Skip collision check if ghost is respawning
+        if (ghost.isRespawning) return;
+        
         if (ghost.x === kiro.x && ghost.y === kiro.y) {
             if (powerPelletActive && ghost.scared) {
                 // Eat ghost
                 score += 200;
                 audioManager.playSound('eatGhost');
                 updateUI();
-                // Respawn ghost at starting position in the ghost house
-                ghost.x = ghost.startX;
-                ghost.y = ghost.startY;
-                ghost.scared = false;
-                ghost.inHouse = true; // Mark as back in house so it can exit again
-                ghost.direction = 'up';
+                
+                // Start respawn timer
+                ghost.isRespawning = true;
+                ghost.respawnTimer = GHOST_RESPAWN_DELAY;
+                
+                // Create particle effect at eaten location
+                particleSystem.createExplosion(ghost.x, ghost.y, 15, TILE_SIZE);
             } else if (!ghost.scared && deathAnimationTimer === 0) {
                 // Only trigger death once
                 // Create explosion effect on collision
@@ -1023,9 +1044,11 @@ function draw() {
     // Draw Kiro with power-up effect if active
     drawKiroWithPowerEffect(ctx, kiro.x, kiro.y, frameCount);
 
-    // Draw ghosts
+    // Draw ghosts (skip if respawning)
     ghosts.forEach(ghost => {
-        drawGhost(ctx, ghost.x, ghost.y, ghost.color, ghost.scared, ghost.direction, frameCount);
+        if (!ghost.isRespawning) {
+            drawGhost(ctx, ghost.x, ghost.y, ghost.color, ghost.scared, ghost.direction, frameCount);
+        }
     });
     
     // Draw particles
@@ -1071,8 +1094,10 @@ function drawMinimap() {
         }
     }
     
-    // Draw ghosts on minimap
+    // Draw ghosts on minimap (skip if respawning)
     ghosts.forEach(ghost => {
+        if (ghost.isRespawning) return;
+        
         if (ghost.scared) {
             // Scared ghosts: bright cyan with white outline
             minimapCtx.fillStyle = '#00FFFF';
