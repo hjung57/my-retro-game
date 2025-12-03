@@ -105,13 +105,8 @@ let kiro = {
     y: 23,
     direction: null,
     nextDirection: null,
-    moveTimer: 0,
-    img: new Image(),
-    imgLoaded: false
+    moveTimer: 0
 };
-kiro.img.src = '/kiro-logo.png';
-kiro.img.onload = () => { kiro.imgLoaded = true; };
-kiro.img.onerror = () => { console.error('Failed to load kiro-logo.png'); };
 
 // Ghosts
 let ghosts = [];
@@ -330,43 +325,6 @@ function saveGameSession() {
         console.error('Error saving game session:', err);
         return null;
     });
-}
-
-function loadGameHistory() {
-    fetch('/api/history')
-        .then(res => res.json())
-        .then(history => {
-            displayGameHistory(history);
-        })
-        .catch(err => console.error('Error loading game history:', err));
-}
-
-function displayGameHistory(history) {
-    const historyContainer = document.getElementById('gameHistory');
-    if (!historyContainer) return;
-    
-    if (history.length === 0) {
-        historyContainer.innerHTML = '<p class="no-history">No games played yet</p>';
-        return;
-    }
-    
-    const historyHTML = history.slice(0, 10).map((session, index) => {
-        const date = new Date(session.timestamp * 1000);
-        const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-        const highScoreBadge = session.isHighScore ? '<span class="high-score-badge">🏆 High Score!</span>' : '';
-        
-        return `
-            <div class="history-item ${session.isHighScore ? 'is-high-score' : ''}">
-                <span class="rank">#${index + 1}</span>
-                <span class="player-name">${session.name}</span>
-                <span class="score">${session.score}</span>
-                <span class="date">${dateStr}</span>
-                ${highScoreBadge}
-            </div>
-        `;
-    }).join('');
-    
-    historyContainer.innerHTML = historyHTML;
 }
 
 function updateUI() {
