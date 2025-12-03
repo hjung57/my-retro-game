@@ -11,7 +11,10 @@ const messageEl = document.getElementById('message');
 let isMobile = window.innerWidth <= 768;
 let cameraX = 0;
 let cameraY = 0;
+let smoothCameraX = 0;
+let smoothCameraY = 0;
 const ZOOM_TILES = 15; // Show 15x15 tiles on mobile
+const CAMERA_SMOOTHING = 0.2; // Lower = smoother but more lag
 
 window.addEventListener('resize', () => {
     isMobile = window.innerWidth <= 768;
@@ -105,7 +108,11 @@ let kiro = {
     y: 23,
     direction: null,
     nextDirection: null,
-    moveTimer: 0
+    moveTimer: 0,
+    renderX: 14,
+    renderY: 23,
+    prevX: 14,
+    prevY: 23
 };
 
 // Ghosts
@@ -228,10 +235,10 @@ function getSpeed(type) {
 function initGhosts() {
     // Spawn all ghosts in the same row inside the ghost house
     ghosts = [
-        { x: 12, y: 14, direction: 'up', moveTimer: 0, color: ghostColors[0], scared: false, startX: 12, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false },
-        { x: 13, y: 14, direction: 'up', moveTimer: 40, color: ghostColors[1], scared: false, startX: 13, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false },
-        { x: 14, y: 14, direction: 'up', moveTimer: 80, color: ghostColors[2], scared: false, startX: 14, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false },
-        { x: 15, y: 14, direction: 'up', moveTimer: 120, color: ghostColors[3], scared: false, startX: 15, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false }
+        { x: 12, y: 14, direction: 'up', moveTimer: 0, color: ghostColors[0], scared: false, startX: 12, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false, renderX: 12, renderY: 14, prevX: 12, prevY: 14 },
+        { x: 13, y: 14, direction: 'up', moveTimer: 40, color: ghostColors[1], scared: false, startX: 13, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false, renderX: 13, renderY: 14, prevX: 13, prevY: 14 },
+        { x: 14, y: 14, direction: 'up', moveTimer: 80, color: ghostColors[2], scared: false, startX: 14, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false, renderX: 14, renderY: 14, prevX: 14, prevY: 14 },
+        { x: 15, y: 14, direction: 'up', moveTimer: 120, color: ghostColors[3], scared: false, startX: 15, startY: 14, inHouse: true, respawnTimer: 0, isRespawning: false, renderX: 15, renderY: 14, prevX: 15, prevY: 14 }
     ];
 }
 
@@ -384,6 +391,8 @@ function moveKiro() {
         }
 
         if (canMove(newX, newY)) {
+            kiro.prevX = kiro.x;
+            kiro.prevY = kiro.y;
             kiro.x = newX;
             kiro.y = newY;
             kiro.moveTimer = getSpeed('kiro');
@@ -480,11 +489,15 @@ function moveGhosts() {
         if (ghost.inHouse) {
             // Step 1: Move horizontally to center columns (x=13 or x=14)
             if (ghost.x < 13) {
+                ghost.prevX = ghost.x;
+                ghost.prevY = ghost.y;
                 ghost.x++;
                 ghost.direction = 'right';
                 ghost.moveTimer = speed;
                 return;
             } else if (ghost.x > 14) {
+                ghost.prevX = ghost.x;
+                ghost.prevY = ghost.y;
                 ghost.x--;
                 ghost.direction = 'left';
                 ghost.moveTimer = speed;
@@ -498,6 +511,8 @@ function moveGhosts() {
                 // Don't return, let normal AI take over
             } else {
                 // Still inside, move up
+                ghost.prevX = ghost.x;
+                ghost.prevY = ghost.y;
                 ghost.y--;
                 ghost.direction = 'up';
                 ghost.moveTimer = speed;
@@ -595,6 +610,8 @@ function moveGhosts() {
                     }
                 }
                 
+                ghost.prevX = ghost.x;
+                ghost.prevY = ghost.y;
                 ghost.x = finalX;
                 ghost.y = finalY;
                 ghost.moveTimer = speed;
@@ -947,21 +964,41 @@ function draw() {
 
     // Calculate camera position for mobile zoom
     if (isMobile) {
-        // Center camera on Kiro
-        cameraX = Math.max(0, Math.min(COLS - ZOOM_TILES, kiro.x - ZOOM_TILES / 2));
-        cameraY = Math.max(0, Math.min(ROWS - ZOOM_TILES, kiro.y - ZOOM_TILES / 2));
+        // Center camera on Kiro's render position for smooth following
+        const targetCameraX = kiro.renderX - ZOOM_TILES / 2;
+        const targetCameraY = kiro.renderY - ZOOM_TILES / 2;
+        
+        // Clamp target camera to maze bounds
+        const clampedTargetX = Math.max(0, Math.min(COLS - ZOOM_TILES, targetCameraX));
+        const clampedTargetY = Math.max(0, Math.min(ROWS - ZOOM_TILES, targetCameraY));
+        
+        // Smooth camera interpolation
+        smoothCameraX += (clampedTargetX - smoothCameraX) * CAMERA_SMOOTHING;
+        smoothCameraY += (clampedTargetY - smoothCameraY) * CAMERA_SMOOTHING;
+        
+        cameraX = smoothCameraX;
+        cameraY = smoothCameraY;
     } else {
         cameraX = 0;
         cameraY = 0;
+        smoothCameraX = 0;
+        smoothCameraY = 0;
     }
 
     ctx.save();
+    
+    // Disable image smoothing for crisp pixels
+    ctx.imageSmoothingEnabled = false;
     
     if (isMobile) {
         // Zoom in on mobile
         const scale = canvas.width / (ZOOM_TILES * TILE_SIZE);
         ctx.scale(scale, scale);
-        ctx.translate(-cameraX * TILE_SIZE, -cameraY * TILE_SIZE);
+        
+        // Round to nearest pixel to prevent sub-pixel jitter
+        const roundedX = Math.round(cameraX * TILE_SIZE) / TILE_SIZE;
+        const roundedY = Math.round(cameraY * TILE_SIZE) / TILE_SIZE;
+        ctx.translate(-roundedX * TILE_SIZE, -roundedY * TILE_SIZE);
     }
 
     // Draw maze
@@ -993,13 +1030,25 @@ function draw() {
         }
     }
 
+    // Smooth interpolation for Kiro
+    const kiroSpeed = getSpeed('kiro');
+    const kiroProgress = kiro.moveTimer > 0 ? 1 - (kiro.moveTimer / kiroSpeed) : 1;
+    kiro.renderX = kiro.prevX + (kiro.x - kiro.prevX) * kiroProgress;
+    kiro.renderY = kiro.prevY + (kiro.y - kiro.prevY) * kiroProgress;
+    
     // Draw Kiro with power-up effect if active
-    drawKiroWithPowerEffect(ctx, kiro.x, kiro.y, frameCount);
+    drawKiroWithPowerEffect(ctx, kiro.renderX, kiro.renderY, frameCount);
 
     // Draw ghosts (skip if respawning)
     ghosts.forEach(ghost => {
         if (!ghost.isRespawning) {
-            drawGhost(ctx, ghost.x, ghost.y, ghost.color, ghost.scared, ghost.direction, frameCount);
+            // Smooth interpolation for ghosts
+            const ghostSpeed = ghost.scared ? getSpeed('scared') : getSpeed('ghost');
+            const ghostProgress = ghost.moveTimer > 0 ? 1 - (ghost.moveTimer / ghostSpeed) : 1;
+            ghost.renderX = ghost.prevX + (ghost.x - ghost.prevX) * ghostProgress;
+            ghost.renderY = ghost.prevY + (ghost.y - ghost.prevY) * ghostProgress;
+            
+            drawGhost(ctx, ghost.renderX, ghost.renderY, ghost.color, ghost.scared, ghost.direction, frameCount);
         }
     });
     
