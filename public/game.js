@@ -47,6 +47,8 @@ let difficulty = 'normal';
 let currentLevel = 1;
 let endlessMode = false;
 let randomDotTimer = 0;
+let ghostComboCount = 0;
+let playerName = 'Player';
 const POWER_PELLET_DURATION = 300; // frames
 const POWER_PELLET_RESPAWN_TIME = 600; // frames (10 seconds at 60fps)
 const MAX_POWER_PELLETS = 4;
@@ -306,12 +308,35 @@ function loadHighScore() {
         .catch(() => {});
 }
 
+function screenShake(intensity, duration) {
+    const gameContainer = document.querySelector('.game-container');
+    if (!gameContainer) return;
+    
+    const startTime = Date.now();
+    
+    function shake() {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < duration) {
+            const progress = 1 - (elapsed / duration);
+            const currentIntensity = intensity * progress;
+            const x = (Math.random() - 0.5) * currentIntensity;
+            const y = (Math.random() - 0.5) * currentIntensity;
+            gameContainer.style.transform = `translate(${x}px, ${y}px)`;
+            requestAnimationFrame(shake);
+        } else {
+            gameContainer.style.transform = '';
+        }
+    }
+    
+    shake();
+}
+
 function saveGameSession() {
     // Always save game session on game over
     return fetch('/api/highscores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: score, name: 'Player' })
+        body: JSON.stringify({ score: score, name: playerName })
     })
     .then(res => res.json())
     .then(data => {
@@ -409,6 +434,7 @@ function moveKiro() {
                 score += 50;
                 powerPelletActive = true;
                 powerPelletTimer = POWER_PELLET_DURATION;
+                ghostComboCount = 0; // Reset combo for new power pellet
                 ghosts.forEach(g => g.scared = true);
                 audioManager.playSound('powerPellet');
                 
@@ -627,8 +653,17 @@ function checkCollisions() {
         
         if (ghost.x === kiro.x && ghost.y === kiro.y) {
             if (powerPelletActive && ghost.scared) {
-                // Eat ghost
-                score += 200;
+                // Combo system: 200, 400, 800, 1600
+                ghostComboCount++;
+                const comboPoints = 200 * Math.pow(2, ghostComboCount - 1);
+                score += comboPoints;
+                
+                // Show combo text
+                messageEl.textContent = `${comboPoints} pts! ${ghostComboCount > 1 ? 'x' + ghostComboCount + ' COMBO!' : ''}`;
+                setTimeout(() => {
+                    if (gameState === 'playing' && !waitingForRespawn) messageEl.textContent = '';
+                }, 1000);
+                
                 audioManager.playSound('eatGhost');
                 updateUI();
                 
@@ -647,6 +682,9 @@ function checkCollisions() {
                 // Lose life
                 lives--;
                 updateUI();
+                
+                // Screen shake effect
+                screenShake(10, 300);
                 
                 // Start death animation timer
                 deathAnimationTimer = DEATH_ANIMATION_DELAY;
@@ -1189,6 +1227,7 @@ function update() {
         powerPelletTimer--;
         if (powerPelletTimer <= 0) {
             powerPelletActive = false;
+            ghostComboCount = 0; // Reset combo when power pellet ends
             ghosts.forEach(g => g.scared = false);
         }
     }
@@ -1669,6 +1708,23 @@ document.getElementById('backToMenuBtn').addEventListener('click', () => {
     messageEl.textContent = '';
 });
 
+// Save name button
+document.getElementById('saveNameBtn').addEventListener('click', () => {
+    const nameInput = document.getElementById('playerNameInput');
+    const newName = nameInput.value.trim() || 'Player';
+    
+    if (newName !== playerName) {
+        playerName = newName;
+        // Re-save with new name
+        saveGameSession().then(() => {
+            // Reload leaderboard
+            showGameOver();
+        });
+    }
+    
+    document.getElementById('nameInputSection').style.display = 'none';
+});
+
 // Settings handlers
 document.getElementById('soundToggle').addEventListener('click', function() {
     soundEnabled = !soundEnabled;
@@ -1737,6 +1793,10 @@ function showSettings() {
 function showGameOver() {
     // Display final score
     document.getElementById('finalScore').textContent = score;
+    
+    // Show name input
+    document.getElementById('playerNameInput').value = playerName;
+    document.getElementById('nameInputSection').style.display = 'block';
     
     // Load and display leaderboard
     fetch('/api/highscores')
