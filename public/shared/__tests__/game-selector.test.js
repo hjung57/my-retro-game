@@ -13,7 +13,7 @@ describe('GameSelector', () => {
     // Set up DOM
     document.body.innerHTML = `
       <div id="game-selector" class="game-selector-container">
-        <h1>KIRO GAMES</h1>
+        <h1>NCINO ARCADES</h1>
         <div class="games-grid">
           <div class="game-card" data-game="pac-gator">
             <h2>PAC-GATOR</h2>
