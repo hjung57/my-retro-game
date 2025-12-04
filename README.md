@@ -1,10 +1,10 @@
-# Flappy Kiro
+# nCino Arcades
 
-Initial folder containing support resources for the Flappy Kiro game.
+A collection of classic arcade-style games including Flappy Gator and Pac-Gator.
 
 ## Example UI
 
-![Flappy Kiro UI](img/example-ui.png)
+![Game UI](img/example-ui.png)
 
 ## Resources
 
