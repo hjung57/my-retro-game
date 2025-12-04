@@ -3,169 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pac-Gator Game</title>
+    <title>Kiro Games</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: #1a1a1a;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-selector-container {
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #5CB54D;
+            text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+        }
+
+        .tagline {
+            font-size: 0.9rem;
+            margin-bottom: 3rem;
+            color: #888;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .game-card {
+            background: #2a2a2a;
+            border: 3px solid #5CB54D;
+            border-radius: 10px;
+            padding: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: white;
+            display: block;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(92, 181, 77, 0.3);
+            border-color: #7dd968;
+        }
+
+        .game-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #5CB54D;
+        }
+
+        .game-card p {
+            font-size: 0.7rem;
+            line-height: 1.6;
+            color: #ccc;
+        }
+
+        .coming-soon {
+            opacity: 0.6;
+            cursor: not-allowed;
+            border-color: #666;
+        }
+
+        .coming-soon:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .coming-soon h2 {
+            color: #888;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #5CB54D;
+            color: #1a1a1a;
+            padding: 0.3rem 0.6rem;
+            border-radius: 5px;
+            font-size: 0.6rem;
+            margin-top: 1rem;
+        }
+
+        .coming-soon .badge {
+            background: #666;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="game-container">
-        <div class="header">
-            <h1>PAC-GATOR</h1>
-            <div class="stats">
-                <div class="score">Score: <span id="score">0</span></div>
-                <div class="lives">Lives: <span id="lives">3</span></div>
-                <div class="level">Level: <span id="level">1</span></div>
-                <div class="high-score">High Score: <span id="highScore">0</span></div>
-            </div>
-        </div>
-        <canvas id="gameCanvas" width="700" height="775"></canvas>
-        <canvas id="minimapCanvas" width="120" height="120" class="minimap"></canvas>
-        <button id="mobilePauseBtn" class="mobile-pause-btn">⏸</button>
-        <div id="message" class="message"></div>
-        
-        <!-- Mobile Touch Controls -->
-        <div class="mobile-controls">
-            <div class="control-row">
-                <div class="control-btn spacer"></div>
-                <button class="control-btn" id="upBtn">↑</button>
-                <div class="control-btn spacer"></div>
-            </div>
-            <div class="control-row">
-                <button class="control-btn" id="leftBtn">←</button>
-                <button class="control-btn" id="downBtn">↓</button>
-                <button class="control-btn" id="rightBtn">→</button>
-            </div>
-        </div>
-        
-        <!-- Start Screen -->
-        <div id="startScreen" class="start-screen">
-            <div class="start-content">
-                <h1 class="game-title">PAC-GATOR</h1>
-                <p class="tagline">Eat the competition</p>
-                <div class="kiro-logo-display">
-                    <canvas id="gatorLogoCanvas" width="120" height="120" class="logo-img"></canvas>
-                </div>
-                <div class="menu-buttons">
-                    <button id="startGameBtn" class="main-menu-btn primary">Start Game</button>
-                    <button id="leaderboardBtn" class="main-menu-btn">Leaderboard</button>
-                    <button id="howToPlayBtn" class="main-menu-btn">How to Play</button>
-                    <button id="settingsBtn" class="main-menu-btn">Settings</button>
-                </div>
-            </div>
-        </div>
+    <div class="game-selector-container" id="game-selector">
+        <h1>KIRO GAMES</h1>
+        <p class="tagline">Choose your adventure</p>
 
-        <!-- Pause Menu -->
-        <div id="pauseMenu" class="pause-menu hidden">
-            <div class="pause-content">
-                <h2>PAUSED</h2>
-                <button id="resumeBtn" class="menu-btn">Resume (ESC)</button>
-                <button id="restartBtn" class="menu-btn">Restart Game</button>
-                <button id="pauseSettingsBtn" class="menu-btn">Settings</button>
-                <button id="quitBtn" class="menu-btn">Quit to Start</button>
+        <div class="games-grid">
+            <div class="game-card" data-game="pac-gator">
+                <h2>PAC-GATOR</h2>
+                <p>Navigate the maze, collect dots, and avoid ghosts in this classic arcade adventure!</p>
+                <span class="badge">PLAY NOW</span>
+            </div>
+
+            <div class="game-card" data-game="flappy-gator">
+                <h2>FLAPPY GATOR</h2>
+                <p>Guide your winged gator through pipes in this endless flying challenge!</p>
+                <span class="badge">PLAY NOW</span>
             </div>
         </div>
-
-        <!-- Leaderboard Screen -->
-        <div id="leaderboardScreen" class="modal-screen hidden">
-            <div class="modal-content">
-                <h2>🏆 LEADERBOARD</h2>
-                <div id="leaderboardList" class="leaderboard-list">
-                    <!-- Will be populated dynamically -->
-                </div>
-                <button id="closeLeaderboardBtn" class="menu-btn">Back to Menu</button>
-            </div>
-        </div>
-
-        <!-- How to Play Screen -->
-        <div id="howToPlayScreen" class="modal-screen hidden">
-            <div class="modal-content">
-                <h2>HOW TO PLAY</h2>
-                <div class="instructions">
-                    <div class="instruction-item">
-                        <span class="key-icon">↑ ↓ ← →</span>
-                        <p>Use arrow keys to move Kiro</p>
-                    </div>
-                    <div class="instruction-item">
-                        <span class="key-icon">ESC</span>
-                        <p>Pause the game</p>
-                    </div>
-                    <div class="instruction-section">
-                        <h3>Objective</h3>
-                        <p>Collect all dots while avoiding ghosts!</p>
-                    </div>
-                    <div class="instruction-section">
-                        <h3>Scoring</h3>
-                        <p>🟢 Dot: 10 points</p>
-                        <p>⚡ Power Pellet: 50 points</p>
-                        <p>👻 Ghost: 200 points (when powered)</p>
-                    </div>
-                    <div class="instruction-section">
-                        <h3>Power Pellets</h3>
-                        <p>Grab the large dots to turn ghosts blue and eat them!</p>
-                    </div>
-                </div>
-                <button id="closeHowToPlayBtn" class="menu-btn">Back to Menu</button>
-            </div>
-        </div>
-
-        <!-- Settings Screen -->
-        <div id="settingsScreen" class="modal-screen hidden">
-            <div class="modal-content">
-                <h2>⚙️ SETTINGS</h2>
-                <div class="settings-options">
-                    <div class="setting-item" style="gap: 50px; padding: 25px 30px;">
-                        <label for="soundToggle" style="flex: 1; text-align: left;">Sound Effects</label>
-                        <button id="soundToggle" class="toggle-btn active" style="width: 100px;">ON</button>
-                    </div>
-                    <div class="setting-item" style="gap: 50px; padding: 25px 30px;">
-                        <label for="musicToggle" style="flex: 1; text-align: left;">Background Music</label>
-                        <button id="musicToggle" class="toggle-btn active" style="width: 100px;">ON</button>
-                    </div>
-                    <div class="setting-item" style="gap: 50px; padding: 25px 30px;">
-                        <label for="difficultySelect" style="flex: 1; text-align: left;">Difficulty</label>
-                        <select id="difficultySelect" class="select-input">
-                            <option value="easy">Easy</option>
-                            <option value="normal" selected>Normal</option>
-                            <option value="hard">Hard</option>
-                        </select>
-                    </div>
-                </div>
-                <button id="closeSettingsBtn" class="menu-btn">Back to Menu</button>
-            </div>
-        </div>
-
-        <!-- Game Over Screen -->
-        <div id="gameOverScreen" class="modal-screen hidden">
-            <div class="modal-content game-over-content">
-                <h2 class="game-over-title">GAME OVER</h2>
-                <div class="final-score">
-                    <p style="margin-bottom: 8px;">Your Score</p>
-                    <span id="finalScore">0</span>
-                </div>
-                
-                <div id="nameInputSection" class="name-input-section">
-                    <label for="playerNameInput">Enter Your Name:</label>
-                    <input type="text" id="playerNameInput" maxlength="15" placeholder="Player" />
-                    <button id="saveNameBtn" class="save-name-btn">Save to Leaderboard</button>
-                </div>
-                
-                <div style="height: 10px;"></div>
-                <div class="game-over-leaderboard">
-                    <h3>🏆 TOP SCORES</h3>
-                    <div id="gameOverLeaderboardList" class="leaderboard-list">
-                        <!-- Will be populated dynamically -->
-                    </div>
-                </div>
-                <button id="backToMenuBtn" class="menu-btn primary-btn">Back to Main Menu</button>
-            </div>
-        </div>
-        
-
     </div>
-    <script src="particles.js"></script>
-    <script src="background-music.js"></script>
-    <script src="game.js"></script>
+
+    <script src="/shared/game-selector.js"></script>
+    <script>
+        // Initialize game selector when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            const selectorContainer = document.getElementById('game-selector');
+            const gameSelector = new GameSelector(selectorContainer);
+        });
+    </script>
 </body>
 </html>

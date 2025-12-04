@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Flappy Gator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Start Screen -->
+        <div id="start-screen" class="start-screen">
+            <div class="start-content">
+                <h1 class="game-title">FLAPPY GATOR</h1>
+                <p class="tagline">Fly through the pipes</p>
+                <div class="gator-logo-display">
+                    <canvas id="gatorPreviewCanvas" width="120" height="120" class="logo-img"></canvas>
+                </div>
+                <div class="start-stats">
+                    <div class="stat-item">High Score: <span id="start-high-score-value">0</span></div>
+                </div>
+                <div class="menu-buttons">
+                    <button id="start-button" class="main-menu-btn primary">Start Game</button>
+                    <button id="how-to-play-button" class="main-menu-btn">How to Play</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Score Display (visible during gameplay) -->
+        <div id="score-display">
+            Score: <span id="current-score">0</span>
+        </div>
+
+        <!-- Mobile Pause Button -->
+        <button id="mobile-pause-btn" class="mobile-pause-btn hidden">⏸</button>
+
+        <!-- Pause Menu -->
+        <div id="pause-menu" class="pause-menu hidden">
+            <div class="pause-content">
+                <h2>PAUSED</h2>
+                <div class="pause-stats">
+                    <p>Current Score: <span id="pause-score">0</span></p>
+                    <p>High Score: <span id="pause-high-score">0</span></p>
+                </div>
+                <button id="resume-button" class="menu-btn">Resume (ESC)</button>
+                <button id="pause-restart-button" class="menu-btn">Restart Game</button>
+                <button id="pause-menu-button" class="menu-btn">Quit to Menu</button>
+            </div>
+        </div>
+
+        <!-- How to Play Screen -->
+        <div id="how-to-play-screen" class="modal-screen hidden">
+            <div class="modal-content">
+                <h2>HOW TO PLAY</h2>
+                <div class="instructions">
+                    <div class="instruction-item">
+                        <span class="key-icon">SPACE</span>
+                        <p>Press SPACE, click, or tap to flap</p>
+                    </div>
+                    <div class="instruction-item">
+                        <span class="key-icon">ESC</span>
+                        <p>Pause the game</p>
+                    </div>
+                    <div class="instruction-section">
+                        <h3>Objective</h3>
+                        <p>Navigate through the pipes without hitting them!</p>
+                    </div>
+                    <div class="instruction-section">
+                        <h3>Scoring</h3>
+                        <p>🟢 Each pipe: 1 point</p>
+                        <p>⭐ Score multiplier increases with combos</p>
+                    </div>
+                    <div class="instruction-section">
+                        <h3>Tips</h3>
+                        <p>• Timing is everything!</p>
+                        <p>• The game gets progressively harder</p>
+                        <p>• Build combos for higher scores</p>
+                    </div>
+                </div>
+                <button id="close-how-to-play-button" class="menu-btn">Back to Menu</button>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="modal-screen hidden">
+            <div class="modal-content game-over-content">
+                <h2 class="game-over-title">GAME OVER</h2>
+                <div class="final-score">
+                    <p style="margin-bottom: 8px;">Your Score</p>
+                    <span id="final-score-value">0</span>
+                </div>
+                <div id="game-over-high-score" class="high-score-display">
+                    High Score: <span id="game-over-high-score-value">0</span>
+                </div>
+                <button id="restart-button" class="menu-btn primary-btn">Play Again</button>
+                <button id="back-to-menu-button" class="menu-btn">Back to Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../shared/api-client.js?v=1764827730"></script>
+    <script src="../shared/audio-manager.js?v=1764827730"></script>
+    <script src="physics-engine.js?v=1764827730"></script>
+    <script src="particle-system.js?v=1764827730"></script>
+    <script src="score-indicator.js?v=1764827730"></script>
+    <script src="flappy-gator-renderer.js?v=1764827730"></script>
+    <script src="game.js?v=1764827730"></script>
+</body>
+</html>

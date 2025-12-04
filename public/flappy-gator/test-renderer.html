@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Renderer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        canvas {
+            background: #87CEEB;
+            border: 2px solid #5CB54D;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="test-canvas" width="480" height="640"></canvas>
+    
+    <script src="flappy-gator-renderer.js"></script>
+    <script>
+        const canvas = document.getElementById('test-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Clear canvas
+        ctx.fillStyle = '#87CEEB';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Create renderer
+        const renderer = new GatorRenderer(ctx);
+        
+        // Draw gator in center
+        renderer.drawGator(240, 320, 0, false);
+        
+        console.log('Renderer test complete!');
+        console.log('GatorRenderer:', GatorRenderer);
+    </script>
+</body>
+</html>

@@ -7,6 +7,9 @@ const livesEl = document.getElementById('lives');
 const highScoreEl = document.getElementById('highScore');
 const messageEl = document.getElementById('message');
 
+// Initialize shared API client
+const apiClient = new APIClient();
+
 // Mobile zoom settings
 let isMobile = window.innerWidth <= 768;
 let cameraX = 0;
@@ -49,6 +52,7 @@ let endlessMode = false;
 let randomDotTimer = 0;
 let ghostComboCount = 0;
 let playerName = 'Player';
+let currentScoreId = null; // Track the ID of the saved score
 const POWER_PELLET_DURATION = 300; // frames
 const POWER_PELLET_RESPAWN_TIME = 600; // frames (10 seconds at 60fps)
 const MAX_POWER_PELLETS = 4;
@@ -126,83 +130,27 @@ const ghostColors = ['#FF0000', '#FFB8FF', '#00FFFF', '#FFB852'];
 // Particle system
 const particleSystem = new ParticleSystem();
 
-// Audio Manager
-class AudioManager {
-    constructor() {
-        this.sounds = {
-            'dot': null,
-            'powerPellet': null,
-            'eatGhost': null,
-            'death': null,
-            'gameStart': null
-        };
-        this.loaded = false;
-        this.loadingSounds = 0;
-        this.totalSounds = Object.keys(this.sounds).length;
-    }
-
-    initAudio() {
-        // Preload all sound files
-        const soundFiles = {
-            'dot': '/sounds/dot.wav',
-            'powerPellet': '/sounds/power-pellet.wav',
-            'eatGhost': '/sounds/eat-ghost.wav',
-            'death': '/sounds/death.wav',
-            'gameStart': '/sounds/game-start.wav'
-        };
-
-        Object.keys(soundFiles).forEach(soundName => {
-            const audio = new Audio();
-            audio.preload = 'auto';
-            
-            audio.addEventListener('canplaythrough', () => {
-                this.loadingSounds++;
-                if (this.loadingSounds === this.totalSounds) {
-                    this.loaded = true;
-                }
-            }, { once: true });
-
-            audio.addEventListener('error', () => {
-                this.loadingSounds++;
-                if (this.loadingSounds === this.totalSounds) {
-                    this.loaded = true;
-                }
-            });
-
-            audio.src = soundFiles[soundName];
-            this.sounds[soundName] = audio;
-        });
-    }
-
-    playSound(soundName) {
-        if (!soundEnabled) return; // Check if sound is enabled
-        
-        if (!this.sounds[soundName]) return;
-
-        try {
-            // Clone the audio element to allow overlapping sounds
-            const sound = this.sounds[soundName].cloneNode();
-            sound.volume = 0.3; // Set volume to 30% to avoid being too loud
-            
-            // Play the sound
-            const playPromise = sound.play();
-            
-            if (playPromise !== undefined) {
-                playPromise.catch(() => {
-                    // Silently handle autoplay restrictions
-                });
-            }
-        } catch (error) {
-            // Silently handle errors
-        }
-    }
-
-    isReady() {
-        return this.loaded;
-    }
-}
-
+// Initialize shared Audio Manager
 const audioManager = new AudioManager();
+
+// Load Pac-Gator sounds
+async function initAudio() {
+    const soundFiles = {
+        'dot': '/pac-gator/sounds/dot.wav',
+        'powerPellet': '/pac-gator/sounds/power-pellet.wav',
+        'eatGhost': '/pac-gator/sounds/eat-ghost.wav',
+        'death': '/pac-gator/sounds/death.wav',
+        'gameStart': '/pac-gator/sounds/game-start.wav'
+    };
+
+    const loadPromises = Object.entries(soundFiles).map(([name, url]) => 
+        audioManager.loadSound(name, url).catch(err => {
+            console.warn(`Failed to load sound ${name}:`, err);
+        })
+    );
+
+    await Promise.all(loadPromises);
+}
 
 // Difficulty settings
 const difficultySettings = {
@@ -264,6 +212,7 @@ function init() {
     currentLevel = 1;
     endlessMode = false;
     randomDotTimer = 0;
+    currentScoreId = null; // Reset score ID for new game
     updateUI();
     loadHighScore();
 }
@@ -296,16 +245,12 @@ function spawnRandomDot() {
     }
 }
 
-function loadHighScore() {
-    fetch('/api/highscores')
-        .then(res => res.json())
-        .then(scores => {
-            if (scores.length > 0) {
-                highScore = scores[0].score;
-                highScoreEl.textContent = highScore;
-            }
-        })
-        .catch(() => {});
+async function loadHighScore() {
+    const scores = await apiClient.getHighScores('pac-gator');
+    if (scores.length > 0) {
+        highScore = scores[0].score;
+        highScoreEl.textContent = highScore;
+    }
 }
 
 function screenShake(intensity, duration) {
@@ -331,26 +276,21 @@ function screenShake(intensity, duration) {
     shake();
 }
 
-function saveGameSession() {
+async function saveGameSession() {
     // Always save game session on game over
-    return fetch('/api/highscores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: score, name: playerName })
-    })
-    .then(res => res.json())
-    .then(data => {
+    const data = await apiClient.submitScore('pac-gator', playerName, score);
+    if (data && data.success) {
+        // Store the score ID for potential updates
+        currentScoreId = data.id;
+        
         if (data.isNewHighScore) {
             // Trigger confetti for new high score
             particleSystem.createConfetti(50, canvas.width);
             highScore = score;
             highScoreEl.textContent = highScore;
         }
-        return data;
-    })
-    .catch(() => {
-        return null;
-    });
+    }
+    return data;
 }
 
 function updateUI() {
@@ -1636,7 +1576,7 @@ if (mobilePauseBtn) {
 
 // Initialize and start
 init();
-audioManager.initAudio();
+initAudio(); // Load sounds asynchronously
 setupMobileControls();
 setupDraggableMinimap();
 
@@ -1709,17 +1649,23 @@ document.getElementById('backToMenuBtn').addEventListener('click', () => {
 });
 
 // Save name button
-document.getElementById('saveNameBtn').addEventListener('click', () => {
+document.getElementById('saveNameBtn').addEventListener('click', async () => {
     const nameInput = document.getElementById('playerNameInput');
     const newName = nameInput.value.trim() || 'Player';
     
     if (newName !== playerName) {
         playerName = newName;
-        // Re-save with new name
-        saveGameSession().then(() => {
-            // Reload leaderboard
+        
+        // If we have a score ID, update the existing score
+        if (currentScoreId) {
+            await apiClient.updateScoreName(currentScoreId, playerName);
+            // Reload leaderboard to show updated name
             showGameOver();
-        });
+        } else {
+            // Fallback: save as new score if no ID (shouldn't happen)
+            await saveGameSession();
+            showGameOver();
+        }
     }
     
     document.getElementById('nameInputSection').style.display = 'none';
@@ -1728,6 +1674,7 @@ document.getElementById('saveNameBtn').addEventListener('click', () => {
 // Settings handlers
 document.getElementById('soundToggle').addEventListener('click', function() {
     soundEnabled = !soundEnabled;
+    audioManager.setMuted(!soundEnabled);
     this.classList.toggle('active');
     this.textContent = soundEnabled ? 'ON' : 'OFF';
 });
@@ -1758,28 +1705,21 @@ document.getElementById('pauseSettingsBtn').addEventListener('click', () => {
 document.getElementById('quitBtn').addEventListener('click', quitToStart);
 
 // Menu functions
-function showLeaderboard() {
-    fetch('/api/highscores')
-        .then(res => res.json())
-        .then(scores => {
-            const leaderboardList = document.getElementById('leaderboardList');
-            if (scores.length === 0) {
-                leaderboardList.innerHTML = '<p class="no-history">No scores yet. Be the first!</p>';
-            } else {
-                leaderboardList.innerHTML = scores.map((entry, index) => `
-                    <div class="leaderboard-entry ${index < 3 ? 'top-3' : ''}">
-                        <span class="leaderboard-rank">#${index + 1}</span>
-                        <span class="leaderboard-name">${entry.name}</span>
-                        <span class="leaderboard-score">${entry.score}</span>
-                    </div>
-                `).join('');
-            }
-            document.getElementById('leaderboardScreen').classList.remove('hidden');
-        })
-        .catch(() => {
-            document.getElementById('leaderboardList').innerHTML = '<p class="no-history">Error loading scores</p>';
-            document.getElementById('leaderboardScreen').classList.remove('hidden');
-        });
+async function showLeaderboard() {
+    const scores = await apiClient.getHighScores('pac-gator');
+    const leaderboardList = document.getElementById('leaderboardList');
+    if (scores.length === 0) {
+        leaderboardList.innerHTML = '<p class="no-history">No scores yet. Be the first!</p>';
+    } else {
+        leaderboardList.innerHTML = scores.map((entry, index) => `
+            <div class="leaderboard-entry ${index < 3 ? 'top-3' : ''}">
+                <span class="leaderboard-rank">#${index + 1}</span>
+                <span class="leaderboard-name">${entry.name}</span>
+                <span class="leaderboard-score">${entry.score}</span>
+            </div>
+        `).join('');
+    }
+    document.getElementById('leaderboardScreen').classList.remove('hidden');
 }
 
 function showHowToPlay() {
@@ -1790,7 +1730,7 @@ function showSettings() {
     document.getElementById('settingsScreen').classList.remove('hidden');
 }
 
-function showGameOver() {
+async function showGameOver() {
     // Display final score
     document.getElementById('finalScore').textContent = score;
     
@@ -1799,40 +1739,33 @@ function showGameOver() {
     document.getElementById('nameInputSection').style.display = 'block';
     
     // Load and display leaderboard
-    fetch('/api/highscores')
-        .then(res => res.json())
-        .then(scores => {
-            const leaderboardList = document.getElementById('gameOverLeaderboardList');
-            if (scores.length === 0) {
-                leaderboardList.innerHTML = '<p class="no-history">No scores yet</p>';
-            } else {
-                // Find current score's rank
-                let currentRank = scores.findIndex(entry => entry.score === score) + 1;
-                if (currentRank === 0) {
-                    // Score not in list yet, find where it would be
-                    currentRank = scores.filter(entry => entry.score > score).length + 1;
-                }
-                
-                leaderboardList.innerHTML = scores.slice(0, 5).map((entry, index) => {
-                    const rank = index + 1;
-                    const isCurrentScore = entry.score === score && rank === currentRank;
-                    const highlightClass = isCurrentScore ? 'current-score' : (index < 3 ? 'top-3' : '');
-                    
-                    return `
-                        <div class="leaderboard-entry ${highlightClass}">
-                            <span class="leaderboard-rank">#${rank}</span>
-                            <span class="leaderboard-name">${entry.name}${isCurrentScore ? ' (You)' : ''}</span>
-                            <span class="leaderboard-score">${entry.score}</span>
-                        </div>
-                    `;
-                }).join('');
-            }
-            document.getElementById('gameOverScreen').classList.remove('hidden');
-        })
-        .catch(() => {
-            document.getElementById('gameOverLeaderboardList').innerHTML = '<p class="no-history">Error loading scores</p>';
-            document.getElementById('gameOverScreen').classList.remove('hidden');
-        });
+    const scores = await apiClient.getHighScores('pac-gator');
+    const leaderboardList = document.getElementById('gameOverLeaderboardList');
+    if (scores.length === 0) {
+        leaderboardList.innerHTML = '<p class="no-history">No scores yet</p>';
+    } else {
+        // Find current score's rank
+        let currentRank = scores.findIndex(entry => entry.score === score) + 1;
+        if (currentRank === 0) {
+            // Score not in list yet, find where it would be
+            currentRank = scores.filter(entry => entry.score > score).length + 1;
+        }
+        
+        leaderboardList.innerHTML = scores.slice(0, 5).map((entry, index) => {
+            const rank = index + 1;
+            const isCurrentScore = entry.score === score && rank === currentRank;
+            const highlightClass = isCurrentScore ? 'current-score' : (index < 3 ? 'top-3' : '');
+            
+            return `
+                <div class="leaderboard-entry ${highlightClass}">
+                    <span class="leaderboard-rank">#${rank}</span>
+                    <span class="leaderboard-name">${entry.name}${isCurrentScore ? ' (You)' : ''}</span>
+                    <span class="leaderboard-score">${entry.score}</span>
+                </div>
+            `;
+        }).join('');
+    }
+    document.getElementById('gameOverScreen').classList.remove('hidden');
 }
 
 gameLoop();
