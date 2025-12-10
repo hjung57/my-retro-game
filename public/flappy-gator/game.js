@@ -129,6 +129,10 @@ class PipeGenerator {
     updateDifficulty(currentScore) {
         if (!this.difficultyEnabled) return;
         
+        const oldSpeed = this.currentScrollSpeed;
+        const oldGap = this.currentGapHeight;
+        const oldInterval = this.currentSpawnInterval;
+        
         // Calculate new gap height based on score
         const gapReduction = currentScore * this.gapReductionRate;
         this.currentGapHeight = Math.max(
@@ -142,6 +146,14 @@ class PipeGenerator {
             this.maxScrollSpeed,
             this.initialScrollSpeed + speedIncrease
         );
+        
+        // Keep spawn interval constant (don't change horizontal spacing)
+        this.currentSpawnInterval = this.initialSpawnInterval;
+        
+        // Debug logging for difficulty changes
+        if (Math.abs(oldSpeed - this.currentScrollSpeed) > 0.01 || Math.abs(oldGap - this.currentGapHeight) > 0.5) {
+            console.log(`Difficulty Update - Score: ${currentScore}, Speed: ${oldSpeed.toFixed(2)} → ${this.currentScrollSpeed.toFixed(2)}, Gap: ${Math.round(oldGap)} → ${Math.round(this.currentGapHeight)}, Interval: ${this.currentSpawnInterval}`);
+        }
     }
 
     /**
@@ -1457,7 +1469,8 @@ class FlappyGatorGame {
     updateScoreDisplay() {
         const scoreElement = document.getElementById('current-score');
         if (scoreElement) {
-            scoreElement.textContent = this.score;
+            // Display score with 1 decimal place if it has decimals, otherwise as integer
+            scoreElement.textContent = this.score % 1 === 0 ? this.score : this.score.toFixed(1);
         }
         
         // Show multiplier if active
@@ -1479,6 +1492,33 @@ class FlappyGatorGame {
                 multiplierElement.style.display = 'none';
             }
         }
+        
+        // Show difficulty info (for debugging/feedback)
+        const difficultyStats = this.pipeGenerator.getDifficultyStats();
+        let difficultyElement = document.getElementById('difficulty-display');
+        
+        if (!difficultyElement) {
+            difficultyElement = document.createElement('div');
+            difficultyElement.id = 'difficulty-display';
+            difficultyElement.style.cssText = `
+                position: absolute;
+                top: 80px;
+                left: 20px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 12px;
+                font-family: 'Press Start 2P', monospace;
+                line-height: 1.4;
+                pointer-events: none;
+            `;
+            document.getElementById('game-container').appendChild(difficultyElement);
+        }
+        
+        difficultyElement.innerHTML = `
+            Speed: ${difficultyStats.scrollSpeed.toFixed(1)}px/f<br>
+            Gap: ${Math.round(difficultyStats.gapHeight)}px<br>
+            Spacing: ${difficultyStats.spawnInterval}f<br>
+            Difficulty: ${Math.round(difficultyStats.difficultyPercent)}%
+        `;
     }
 
     /**
@@ -1673,8 +1713,8 @@ class FlappyGatorGame {
      * @param {number} points - Base points to add
      */
     addScore(points = 1) {
-        // Calculate score with multiplier
-        const earnedPoints = Math.floor(points * this.scoreMultiplier);
+        // Calculate score with multiplier (keep decimal precision)
+        const earnedPoints = Math.round(points * this.scoreMultiplier * 10) / 10; // Round to 1 decimal
         this.score += earnedPoints;
         
         // Update difficulty based on new score
@@ -1684,9 +1724,11 @@ class FlappyGatorGame {
         this.comboCounter++;
         this.lastScoreTime = Date.now();
         
-        // Increase multiplier for combos (max 3x)
-        if (this.comboCounter > 5 && this.scoreMultiplier < 3) {
-            this.scoreMultiplier = Math.min(3, 1 + Math.floor(this.comboCounter / 5) * 0.5);
+        // Increase multiplier for combos (max 10x)
+        // Multiplier increases every 3 consecutive pipes: 1x -> 1.5x -> 2x -> 2.5x ... -> 10x
+        if (this.comboCounter >= 3) {
+            const multiplierLevel = Math.min(Math.floor(this.comboCounter / 3), 18); // Max 18 levels (10x)
+            this.scoreMultiplier = Math.min(10, 1 + (multiplierLevel * 0.5));
         }
         
         // Audio feedback - higher pitch for multipliers

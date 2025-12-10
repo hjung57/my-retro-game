@@ -39,17 +39,18 @@ const FLAPPY_CONFIG = {
   // Progressive difficulty - pipe gap
   INITIAL_PIPE_GAP: 220, // Starting gap (generous)
   MIN_PIPE_GAP: 140, // Minimum gap (challenging but fair)
-  GAP_REDUCTION_RATE: 0.8, // How much gap reduces per point
+  GAP_REDUCTION_RATE: 1.2, // How much gap reduces per point (more noticeable)
 
   // Progressive difficulty - speed
   INITIAL_PIPE_SPEED: 1.5, // Starting speed (slower)
-  MAX_PIPE_SPEED: 3.5, // Maximum speed
-  SPEED_INCREASE_RATE: 0.05, // How much speed increases per point
+  MAX_PIPE_SPEED: 6.0, // Maximum speed (much faster)
+  SPEED_INCREASE_RATE: 0.25, // How much speed increases per point (very noticeable)
 
   // Scoring
   POINTS_PER_PIPE: 1,
-  COMBO_THRESHOLD: 3,
-  COMBO_MULTIPLIER: 1.5,
+  COMBO_THRESHOLD: 3, // Pipes needed to start multiplier
+  MAX_MULTIPLIER: 10, // Maximum score multiplier (10x)
+  MULTIPLIER_INCREMENT: 0.5, // Multiplier increases by 0.5x every 3 pipes
 
   // Visual effects
   PARTICLE_COUNT: 15,
