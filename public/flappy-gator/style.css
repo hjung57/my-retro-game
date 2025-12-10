@@ -436,6 +436,8 @@ body {
 .game-over-stats {
     display: flex;
     flex-direction: column;
+    margin: 10px 0;
+    padding: 10px;
     gap: 8px;
     padding: 16px;
     background-color: rgba(55, 65, 81, 0.5);
@@ -447,6 +449,8 @@ body {
 .stat-row {
     display: flex;
     justify-content: space-between;
+    padding: 5px 0;
+    font-size: 0.6rem;
     font-size: 0.7rem;
     color: #d1d5db;
     font-family: 'Press Start 2P', cursive;
@@ -633,4 +637,280 @@ body {
         image-rendering: -webkit-optimize-contrast;
         image-rendering: crisp-edges;
     }
+}
+
+
+/* Leaderboard Styles */
+.leaderboard-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 20px 0;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+}
+
+.leaderboard-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    margin: 8px 0;
+    background: rgba(92, 181, 77, 0.1);
+    border: 2px solid rgba(92, 181, 77, 0.3);
+    border-radius: 6px;
+    font-size: 0.7rem;
+    transition: all 0.2s ease;
+}
+
+.leaderboard-entry:hover {
+    background: rgba(92, 181, 77, 0.2);
+    border-color: rgba(92, 181, 77, 0.5);
+    transform: translateX(5px);
+}
+
+.leaderboard-entry.top-3 {
+    background: rgba(255, 215, 0, 0.1);
+    border-color: rgba(255, 215, 0, 0.5);
+}
+
+.leaderboard-rank {
+    font-weight: bold;
+    color: #5CB54D;
+    min-width: 40px;
+}
+
+.leaderboard-entry.top-3 .leaderboard-rank {
+    color: #FFD700;
+}
+
+.leaderboard-name {
+    flex: 1;
+    text-align: left;
+    margin: 0 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.leaderboard-score {
+    font-weight: bold;
+    color: #ffffff;
+    min-width: 80px;
+    text-align: right;
+}
+
+.leaderboard-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.leaderboard-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.leaderboard-list::-webkit-scrollbar-thumb {
+    background: rgba(92, 181, 77, 0.5);
+    border-radius: 4px;
+}
+
+.leaderboard-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(92, 181, 77, 0.7);
+}
+
+/* Name Input Section */
+.name-input-section {
+    margin: 20px 0;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    border: 2px solid rgba(92, 181, 77, 0.3);
+}
+
+.name-input-section label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.7rem;
+    color: #5CB54D;
+}
+
+#player-name-input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(92, 181, 77, 0.5);
+    border-radius: 6px;
+    color: #ffffff;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+#player-name-input:focus {
+    outline: none;
+    border-color: #5CB54D;
+    box-shadow: 0 0 10px rgba(92, 181, 77, 0.3);
+}
+
+.save-name-btn {
+    width: 100%;
+    padding: 12px 20px;
+    background: #5CB54D;
+    color: #0a0a0a;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.save-name-btn:hover {
+    background: #7dd968;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(92, 181, 77, 0.4);
+}
+
+.save-name-btn:active {
+    transform: translateY(0);
+}
+
+.save-name-btn:disabled {
+    background: #666;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Game Over Leaderboard */
+.game-over-leaderboard {
+    margin: 10px 0;
+}
+
+.game-over-leaderboard h3 {
+    font-size: 0.8rem;
+    color: #5CB54D;
+    margin-bottom: 10px;
+}
+
+.game-over-leaderboard .leaderboard-list {
+    max-height: 180px;
+}
+
+/* Compact game over layout */
+.game-over-content {
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.game-over-content .final-score {
+    margin: 15px 0;
+}
+
+.game-over-content .final-score p {
+    font-size: 0.7rem;
+    margin-bottom: 5px;
+}
+
+.game-over-content .final-score span {
+    font-size: 2rem;
+}
+
+/* Compact name input */
+.name-input-section {
+    margin: 10px 0;
+    padding: 15px;
+}
+
+.name-input-section label {
+    font-size: 0.6rem;
+    margin-bottom: 8px;
+}
+
+#player-name-input {
+    padding: 10px;
+    margin-bottom: 10px;
+    font-size: 0.7rem;
+}
+
+.save-name-btn {
+    padding: 10px 15px;
+    font-size: 0.6rem;
+}
+
+/* Compact leaderboard entries */
+.game-over-leaderboard .leaderboard-entry {
+    padding: 8px 12px;
+    margin: 5px 0;
+    font-size: 0.6rem;
+}
+
+/* Compact buttons */
+.game-over-content .menu-btn {
+    margin: 5px 0;
+    padding: 10px 15px;
+    font-size: 0.7rem;
+}
+
+
+/* Settings Screen */
+.settings-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    border: 2px solid rgba(92, 181, 77, 0.3);
+}
+
+.setting-item label {
+    font-size: 0.7rem;
+    color: #ffffff;
+}
+
+.toggle-btn {
+    padding: 10px 20px;
+    background: #666;
+    color: #ffffff;
+    border: 2px solid #888;
+    border-radius: 6px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.toggle-btn.active {
+    background: #5CB54D;
+    color: #0a0a0a;
+    border-color: #5CB54D;
+}
+
+.toggle-btn:hover {
+    transform: translateY(-2px);
+}
+
+.select-input {
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+    border: 2px solid rgba(92, 181, 77, 0.5);
+    border-radius: 6px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.select-input:focus {
+    outline: none;
+    border-color: #5CB54D;
 }

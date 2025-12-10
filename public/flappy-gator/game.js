@@ -935,6 +935,9 @@ class FlappyGatorGame {
         this.state = 'playing';
         this.updateUI();
         
+        // Update score display to show 0
+        this.updateScoreDisplay();
+        
         // Start game loop if not already running
         if (!this.animationFrameId) {
             this.gameLoop();
@@ -1329,8 +1332,12 @@ class FlappyGatorGame {
             scoreDisplay.style.display = 'none';
             
             // Update game over screen scores
-            document.getElementById('final-score-value').textContent = this.score;
-            document.getElementById('game-over-high-score-value').textContent = stats.highScore;
+            const finalScoreElement = document.getElementById('final-score-value');
+            if (finalScoreElement) {
+                finalScoreElement.textContent = this.score;
+            }
+            
+            // High score display removed (now shown in leaderboard)
             
             // Show new high score indicator
             if (isNewHighScore) {
@@ -1437,7 +1444,9 @@ class FlappyGatorGame {
      */
     updateScoreDisplay() {
         const scoreElement = document.getElementById('current-score');
-        scoreElement.textContent = this.score;
+        if (scoreElement) {
+            scoreElement.textContent = this.score;
+        }
         
         // Show multiplier if active
         if (this.scoreMultiplier > 1) {
@@ -1557,6 +1566,9 @@ class FlappyGatorGame {
         // Clean up dynamically created elements
         this.cleanupDynamicElements();
         
+        // Hide pause menu
+        this.hidePauseMenu();
+        
         // Reset game state
         this.state = 'start';
         this.stateManager.transitionTo(this.stateManager.STATES.MENU);
@@ -1622,6 +1634,9 @@ class FlappyGatorGame {
         
         // Update UI to display game over screen with final score
         this.updateUI(isNewHighScore);
+        
+        // Load leaderboard on game over screen
+        loadLeaderboard('game-over-leaderboard-list');
         
         // Submit score to API
         this.submitScore();
@@ -1752,6 +1767,42 @@ class FlappyGatorGame {
 // Global game instance to prevent duplicates
 let gameInstance = null;
 
+// Global API client for leaderboard functions
+const apiClient = new APIClient();
+
+// Leaderboard helper function
+async function loadLeaderboard(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    try {
+        container.innerHTML = '<p style="text-align: center; padding: 20px;">Loading...</p>';
+        const scores = await apiClient.getHighScores('flappy-gator');
+        
+        if (scores.length === 0) {
+            container.innerHTML = '<p style="text-align: center; padding: 20px; color: #888;">No scores yet. Be the first!</p>';
+            return;
+        }
+        
+        container.innerHTML = scores.map((entry, index) => {
+            const rank = index + 1;
+            const isTop3 = rank <= 3;
+            const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+            
+            return `
+                <div class="leaderboard-entry ${isTop3 ? 'top-3' : ''}">
+                    <span class="leaderboard-rank">${medal} #${rank}</span>
+                    <span class="leaderboard-name">${entry.name}</span>
+                    <span class="leaderboard-score">${entry.score}</span>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Failed to load leaderboard:', error);
+        container.innerHTML = '<p style="text-align: center; padding: 20px; color: #ff6b6b;">Failed to load leaderboard</p>';
+    }
+}
+
 // Clean up before page unload
 window.addEventListener('beforeunload', () => {
     if (gameInstance) {
@@ -1839,19 +1890,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (backToMenuButton) {
         backToMenuButton.addEventListener('click', () => {
-            // Clean up game before navigating away
+            // Return to game's start screen
             if (gameInstance) {
-                gameInstance.destroy();
-                gameInstance = null;
-            }
-            
-            // Check if we're in an iframe (loaded by game selector)
-            if (window.parent !== window) {
-                // We're in an iframe, communicate with parent to show selector
-                window.parent.postMessage({ action: 'showSelector' }, '*');
-            } else {
-                // We're standalone, navigate to root
-                window.location.href = '/';
+                gameInstance.returnToMenu();
             }
         });
     }
@@ -1869,6 +1910,107 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('how-to-play-screen').classList.add('hidden');
             document.getElementById('start-screen').classList.remove('hidden');
         });
+    }
+    
+    // Settings screen
+    const settingsButton = document.getElementById('settings-button');
+    const closeSettingsButton = document.getElementById('close-settings-button');
+    const soundToggle = document.getElementById('sound-toggle');
+    
+    if (settingsButton) {
+        settingsButton.addEventListener('click', () => {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('settings-screen').classList.remove('hidden');
+        });
+    }
+    
+    if (closeSettingsButton) {
+        closeSettingsButton.addEventListener('click', () => {
+            document.getElementById('settings-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        });
+    }
+    
+    if (soundToggle) {
+        soundToggle.addEventListener('click', () => {
+            soundToggle.classList.toggle('active');
+            const isActive = soundToggle.classList.contains('active');
+            soundToggle.textContent = isActive ? 'ON' : 'OFF';
+            
+            // Toggle sound in game instance
+            if (gameInstance && gameInstance.audioManager) {
+                gameInstance.audioManager.setMuted(!isActive);
+            }
+        });
+    }
+    
+    // Main menu button (on start screen)
+    const mainMenuButton = document.getElementById('main-menu-button');
+    if (mainMenuButton) {
+        mainMenuButton.addEventListener('click', () => {
+            window.location.href = '/';
+        });
+    }
+    
+    // Leaderboard screen
+    const leaderboardButton = document.getElementById('leaderboard-button');
+    const closeLeaderboardButton = document.getElementById('close-leaderboard-button');
+    
+    if (leaderboardButton) {
+        leaderboardButton.addEventListener('click', async () => {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('leaderboard-screen').classList.remove('hidden');
+            await loadLeaderboard('leaderboard-list');
+        });
+    }
+    
+    if (closeLeaderboardButton) {
+        closeLeaderboardButton.addEventListener('click', () => {
+            document.getElementById('leaderboard-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        });
+    }
+    
+    // Save name button
+    const saveNameButton = document.getElementById('save-name-button');
+    const playerNameInput = document.getElementById('player-name-input');
+    
+    if (saveNameButton && playerNameInput) {
+        saveNameButton.addEventListener('click', async () => {
+            const playerName = playerNameInput.value.trim() || 'Player';
+            const score = gameInstance ? gameInstance.score : 0;
+            
+            console.log('Saving score:', { playerName, score, gameType: 'flappy-gator' });
+            
+            saveNameButton.disabled = true;
+            saveNameButton.textContent = 'Saving...';
+            
+            try {
+                const result = await apiClient.submitScore('flappy-gator', playerName, score);
+                console.log('Save result:', result);
+                
+                await loadLeaderboard('game-over-leaderboard-list');
+                playerNameInput.value = '';
+                saveNameButton.textContent = 'Saved!';
+                setTimeout(() => {
+                    saveNameButton.textContent = 'Save to Leaderboard';
+                    saveNameButton.disabled = false;
+                }, 2000);
+            } catch (error) {
+                console.error('Failed to save score:', error);
+                saveNameButton.textContent = 'Error - Try Again';
+                saveNameButton.disabled = false;
+            }
+        });
+        
+        // Allow Enter key to save
+        playerNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !saveNameButton.disabled) {
+                saveNameButton.click();
+            }
+        });
+    } else {
+        console.error('Save button or input not found:', { saveNameButton, playerNameInput });
     }
     
     // Mobile pause button

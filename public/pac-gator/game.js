@@ -1621,6 +1621,9 @@ document.getElementById('startGameBtn').addEventListener('click', () => {
 document.getElementById('leaderboardBtn').addEventListener('click', showLeaderboard);
 document.getElementById('howToPlayBtn').addEventListener('click', showHowToPlay);
 document.getElementById('settingsBtn').addEventListener('click', showSettings);
+document.getElementById('mainMenuBtn').addEventListener('click', () => {
+    window.location.href = '/';
+});
 
 // Modal close handlers
 document.getElementById('closeLeaderboardBtn').addEventListener('click', () => {

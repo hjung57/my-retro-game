@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/flappy-gator/style.css">
 </head>
 <body>
     <div id="game-container">
@@ -26,7 +26,10 @@
                 </div>
                 <div class="menu-buttons">
                     <button id="start-button" class="main-menu-btn primary">Start Game</button>
+                    <button id="leaderboard-button" class="main-menu-btn">Leaderboard</button>
                     <button id="how-to-play-button" class="main-menu-btn">How to Play</button>
+                    <button id="settings-button" class="main-menu-btn">Settings</button>
+                    <button id="main-menu-button" class="main-menu-btn">← Back to Games</button>
                 </div>
             </div>
         </div>
@@ -53,6 +56,31 @@
                 <button id="resume-button" class="menu-btn">Resume (ESC)</button>
                 <button id="pause-restart-button" class="menu-btn">Restart Game</button>
                 <button id="pause-menu-button" class="menu-btn">Quit to Menu</button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboard-screen" class="modal-screen hidden">
+            <div class="modal-content">
+                <h2>🏆 LEADERBOARD</h2>
+                <div id="leaderboard-list" class="leaderboard-list">
+                    <!-- Will be populated dynamically -->
+                </div>
+                <button id="close-leaderboard-button" class="menu-btn">Back to Menu</button>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="modal-screen hidden">
+            <div class="modal-content">
+                <h2>⚙️ SETTINGS</h2>
+                <div class="settings-options">
+                    <div class="setting-item" style="gap: 50px; padding: 25px 30px;">
+                        <label for="sound-toggle" style="flex: 1; text-align: left;">Sound Effects</label>
+                        <button id="sound-toggle" class="toggle-btn active" style="width: 100px;">ON</button>
+                    </div>
+                </div>
+                <button id="close-settings-button" class="menu-btn">Back to Menu</button>
             </div>
         </div>
 
@@ -97,8 +125,19 @@
                     <p style="margin-bottom: 8px;">Your Score</p>
                     <span id="final-score-value">0</span>
                 </div>
-                <div id="game-over-high-score" class="high-score-display">
-                    High Score: <span id="game-over-high-score-value">0</span>
+                
+                <div id="name-input-section" class="name-input-section">
+                    <label for="player-name-input">Enter Your Name:</label>
+                    <input type="text" id="player-name-input" maxlength="15" placeholder="Player" />
+                    <button id="save-name-button" class="save-name-btn">Save to Leaderboard</button>
+                </div>
+                
+                <div style="height: 10px;"></div>
+                <div class="game-over-leaderboard">
+                    <h3>🏆 TOP SCORES</h3>
+                    <div id="game-over-leaderboard-list" class="leaderboard-list">
+                        <!-- Will be populated dynamically -->
+                    </div>
                 </div>
                 <button id="restart-button" class="menu-btn primary-btn">Play Again</button>
                 <button id="back-to-menu-button" class="menu-btn">Back to Menu</button>
@@ -106,12 +145,14 @@
         </div>
     </div>
 
-    <script src="../shared/api-client.js?v=1764827730"></script>
-    <script src="../shared/audio-manager.js?v=1764827730"></script>
-    <script src="physics-engine.js?v=1764827730"></script>
-    <script src="particle-system.js?v=1764827730"></script>
-    <script src="score-indicator.js?v=1764827730"></script>
-    <script src="flappy-gator-renderer.js?v=1764827730"></script>
-    <script src="game.js?v=1764827730"></script>
+    <script src="/flappy-gator/config.js?v=1764829000"></script>
+    <script src="/flappy-gator/performance-optimizer.js?v=1764829000"></script>
+    <script src="/shared/api-client.js?v=1764829000"></script>
+    <script src="/shared/audio-manager.js?v=1764829000"></script>
+    <script src="/flappy-gator/physics-engine.js?v=1764829000"></script>
+    <script src="/flappy-gator/particle-system.js?v=1764829000"></script>
+    <script src="/flappy-gator/score-indicator.js?v=1764829000"></script>
+    <script src="/flappy-gator/flappy-gator-renderer.js?v=1764829000"></script>
+    <script src="/flappy-gator/game.js?v=1764829000"></script>
 </body>
 </html>
