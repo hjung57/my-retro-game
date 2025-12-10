@@ -6,12 +6,12 @@ require 'sequel'
 set :public_folder, 'public'
 
 # Database setup
-DB = if ENV['DATABASE_URL']
-  # Production: Use Render's PostgreSQL
-  Sequel.connect(ENV['DATABASE_URL'])
+DB = if ENV['RACK_ENV'] == 'production'
+  # Production: Use SQLite with production database name
+  Sequel.sqlite('game_scores_production.db')
 else
-  # Development: Use SQLite
-  Sequel.sqlite('game_scores.db')
+  # Development: Use SQLite with development database name
+  Sequel.sqlite('game_scores_development.db')
 end
 
 # Create high_scores table if it doesn't exist
@@ -20,7 +20,7 @@ DB.create_table? :high_scores do
   String :name, null: false
   Integer :score, null: false
   Integer :timestamp, null: false
-  String :game_type, default: 'pac-gator' # Default to pac-gator for backwards compatibility
+  String :game_type, null: false # Required field - no default
   index :score
   index :timestamp
   index :game_type
@@ -38,6 +38,54 @@ unless DB[:high_scores].columns.include?(:game_type)
   puts "✓ Added game_type column to high_scores table"
 end
 
+# Migration: Remove default value from game_type and make it required
+# Check if game_type column has a default value or allows NULL
+column_info = DB.schema(:high_scores).find { |col| col[0] == :game_type }
+has_default = column_info && column_info[1][:default]
+allows_null = column_info && column_info[1][:allow_null] != false
+
+if has_default || allows_null
+  puts "🔄 Migrating game_type column to remove default and make required..."
+  
+  # First, update any NULL game_type values (shouldn't be any, but just in case)
+  null_count = DB[:high_scores].where(game_type: nil).count
+  if null_count > 0
+    puts "⚠️  Found #{null_count} records with NULL game_type, setting to 'pac-gator'"
+    DB[:high_scores].where(game_type: nil).update(game_type: 'pac-gator')
+  end
+  
+  # Update any empty string game_type values
+  empty_count = DB[:high_scores].where(game_type: '').count
+  if empty_count > 0
+    puts "⚠️  Found #{empty_count} records with empty game_type, setting to 'pac-gator'"
+    DB[:high_scores].where(game_type: '').update(game_type: 'pac-gator')
+  end
+  
+  # SQLite doesn't support ALTER COLUMN directly, so we need to recreate the table
+  # Create a backup table
+  DB.create_table :high_scores_backup do
+    primary_key :id
+    String :name, null: false
+    Integer :score, null: false
+    Integer :timestamp, null: false
+    String :game_type, null: false # No default, required
+    index :score
+    index :timestamp
+    index :game_type
+  end
+  
+  # Copy data to backup table
+  DB[:high_scores_backup].insert(DB[:high_scores].select(:id, :name, :score, :timestamp, :game_type))
+  
+  # Drop original table
+  DB.drop_table :high_scores
+  
+  # Rename backup table
+  DB.rename_table :high_scores_backup, :high_scores
+  
+  puts "✓ Successfully migrated game_type column: removed default, made required"
+end
+
 get '/' do
   send_file File.join(settings.public_folder, 'index.html')
 end
@@ -48,6 +96,82 @@ end
 
 get '/flappy-gator' do
   send_file File.join(settings.public_folder, 'flappy-gator', 'flappy-gator.html')
+end
+
+# Admin endpoint to download production database (remove in production if not needed)
+get '/admin/download-db' do
+  if ENV['RACK_ENV'] == 'production'
+    send_file 'game_scores_production.db', :filename => 'production_backup.db'
+  else
+    halt 404, "Not available in development"
+  end
+end
+
+# Admin endpoint to view all database records
+get '/admin/database' do
+  if ENV['RACK_ENV'] == 'production'
+    scores = DB[:high_scores].order(Sequel.desc(:timestamp)).all
+    content_type :json
+    json scores
+  else
+    halt 404, "Not available in development"
+  end
+end
+
+# Admin endpoint to force database migration
+post '/admin/migrate' do
+  if ENV['RACK_ENV'] == 'production'
+    begin
+      # Check current schema
+      column_info = DB.schema(:high_scores).find { |col| col[0] == :game_type }
+      has_default = column_info && column_info[1][:default]
+      allows_null = column_info && column_info[1][:allow_null] != false
+      
+      if has_default || allows_null
+        # Run the migration
+        puts "🔄 Force migrating production database..."
+        
+        # Update any NULL or empty game_type values
+        null_count = DB[:high_scores].where(game_type: nil).count
+        empty_count = DB[:high_scores].where(game_type: '').count
+        
+        if null_count > 0
+          DB[:high_scores].where(game_type: nil).update(game_type: 'pac-gator')
+        end
+        
+        if empty_count > 0
+          DB[:high_scores].where(game_type: '').update(game_type: 'pac-gator')
+        end
+        
+        # Recreate table with proper schema
+        DB.create_table :high_scores_backup do
+          primary_key :id
+          String :name, null: false
+          Integer :score, null: false
+          Integer :timestamp, null: false
+          String :game_type, null: false # No default, required
+          index :score
+          index :timestamp
+          index :game_type
+        end
+        
+        # Copy data
+        DB[:high_scores_backup].insert(DB[:high_scores].select(:id, :name, :score, :timestamp, :game_type))
+        
+        # Replace table
+        DB.drop_table :high_scores
+        DB.rename_table :high_scores_backup, :high_scores
+        
+        json({ success: true, message: "Migration completed successfully", updated_records: null_count + empty_count })
+      else
+        json({ success: true, message: "Database already migrated" })
+      end
+    rescue => e
+      json({ success: false, error: e.message })
+    end
+  else
+    halt 404, "Not available in development"
+  end
 end
 
 # Get game history (all sessions sorted by score descending)
@@ -95,8 +219,17 @@ post '/api/highscores' do
     halt 400, json({ success: false, error: 'Score must be a non-negative integer' })
   end
   
-  # Get game type, default to 'pac-gator' for backwards compatibility
-  game_type = data['game_type'] || 'pac-gator'
+  # Validate game type is provided and valid
+  game_type = data['game_type']
+  if game_type.nil? || game_type.empty?
+    halt 400, json({ success: false, error: 'game_type is required' })
+  end
+  
+  # Validate game type is one of the supported games
+  valid_game_types = ['pac-gator', 'flappy-gator']
+  unless valid_game_types.include?(game_type)
+    halt 400, json({ success: false, error: "game_type must be one of: #{valid_game_types.join(', ')}" })
+  end
   
   # Insert into database and get the ID
   score_id = DB[:high_scores].insert(
