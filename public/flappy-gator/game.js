@@ -1632,29 +1632,28 @@ class FlappyGatorGame {
         // Play collision sound effect with custom volume
         this.audioManager.playSound('collision', this.soundVolumes?.collision || 0.7);
         
-        // Update UI to display game over screen with final score
-        this.updateUI(isNewHighScore);
-        
-        // Load leaderboard on game over screen
-        loadLeaderboard('game-over-leaderboard-list');
-        
-        // Submit score to API
-        this.submitScore();
+        // Save session first, then show game over screen with updated leaderboard (copied from pac-gator)
+        this.saveGameSession().then(() => {
+            this.updateUI(isNewHighScore);
+            loadLeaderboard('game-over-leaderboard-list');
+        });
     }
 
     /**
-     * Submit score to API with enhanced error handling
+     * Save game session (copied from pac-gator pattern)
      */
-    async submitScore() {
-        try {
-            await this.apiClient.submitScore('flappy-gator', 'Player', this.score);
-            await this.loadHighScore();
-            this.updateUI();
-        } catch (error) {
-            console.error('Error submitting score:', error);
-            // Still update UI even if API fails
-            this.updateUI();
+    async saveGameSession() {
+        // Always save game session on game over
+        const data = await this.apiClient.submitScore('flappy-gator', 'Player', this.score);
+        if (data && data.success) {
+            // Store the score ID for potential updates
+            this.currentScoreId = data.id;
+            
+            if (data.isNewHighScore) {
+                this.highScore = this.score;
+            }
         }
+        return data;
     }
 
     /**
@@ -1705,8 +1704,7 @@ class FlappyGatorGame {
         // Play score sound with custom volume
         this.audioManager.playSound('score', this.soundVolumes?.score || 0.4);
         
-        // TODO: Add pitch variation based on multiplier when AudioManager supports it
-        // Higher multiplier = higher pitch for more satisfying feedback
+
     }
 
     /**
@@ -1760,7 +1758,7 @@ class FlappyGatorGame {
         // Note: Event listeners are handled by the browser when navigating away
         // If we need to remove them manually, we'd need to store references
         
-        console.log('Game instance destroyed');
+
     }
 }
 
@@ -1773,7 +1771,10 @@ const apiClient = new APIClient();
 // Leaderboard helper function
 async function loadLeaderboard(containerId) {
     const container = document.getElementById(containerId);
-    if (!container) return;
+    if (!container) {
+        console.error('Container not found:', containerId);
+        return;
+    }
     
     try {
         container.innerHTML = '<p style="text-align: center; padding: 20px;">Loading...</p>';
@@ -1975,20 +1976,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveNameButton = document.getElementById('save-name-button');
     const playerNameInput = document.getElementById('player-name-input');
     
+
+    
     if (saveNameButton && playerNameInput) {
-        saveNameButton.addEventListener('click', async () => {
-            const playerName = playerNameInput.value.trim() || 'Player';
-            const score = gameInstance ? gameInstance.score : 0;
+        saveNameButton.addEventListener('click', async (e) => {
+            e.preventDefault();
             
-            console.log('Saving score:', { playerName, score, gameType: 'flappy-gator' });
+            const playerName = playerNameInput.value.trim() || 'Player';
+            
+            if (!gameInstance || !gameInstance.currentScoreId) {
+                console.warn('No score ID available');
+                return;
+            }
             
             saveNameButton.disabled = true;
             saveNameButton.textContent = 'Saving...';
             
             try {
-                const result = await apiClient.submitScore('flappy-gator', playerName, score);
-                console.log('Save result:', result);
+                // Update the existing score's name (copied from pac-gator pattern)
+                await apiClient.updateScoreName(gameInstance.currentScoreId, playerName);
                 
+                // Reload leaderboard to show updated name
                 await loadLeaderboard('game-over-leaderboard-list');
                 playerNameInput.value = '';
                 saveNameButton.textContent = 'Saved!';
@@ -1997,7 +2005,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     saveNameButton.disabled = false;
                 }, 2000);
             } catch (error) {
-                console.error('Failed to save score:', error);
+                console.error('Error updating score name:', error);
                 saveNameButton.textContent = 'Error - Try Again';
                 saveNameButton.disabled = false;
             }

@@ -14,16 +14,17 @@ class APIClient {
      */
     async getHighScores(gameType) {
         try {
-            const response = await fetch(`${this.baseURL}/api/highscores`);
+            // Build URL with game_type parameter if provided
+            let url = `${this.baseURL}/api/highscores`;
+            if (gameType) {
+                url += `?game_type=${encodeURIComponent(gameType)}`;
+            }
+            
+            const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const scores = await response.json();
-            
-            // Filter by game type if provided
-            if (gameType) {
-                return scores.filter(score => score.game_type === gameType);
-            }
             
             return scores;
         } catch (error) {
@@ -41,14 +42,17 @@ class APIClient {
      */
     async submitScore(gameType, playerName, score) {
         try {
+            const payload = { 
+                game_type: gameType,
+                name: playerName, 
+                score: score 
+            };
+
+            
             const response = await fetch(`${this.baseURL}/api/highscores`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    game_type: gameType,
-                    name: playerName, 
-                    score: score 
-                })
+                body: JSON.stringify(payload)
             });
             
             if (!response.ok) {
@@ -63,30 +67,7 @@ class APIClient {
         }
     }
 
-    /**
-     * Get game history for a specific game type
-     * @param {string} gameType - The game type identifier (e.g., 'pac-gator', 'flappy-gator')
-     * @returns {Promise<Array>} Array of game history objects sorted by timestamp
-     */
-    async getHistory(gameType) {
-        try {
-            const response = await fetch(`${this.baseURL}/api/history`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const history = await response.json();
-            
-            // Filter by game type if provided
-            if (gameType) {
-                return history.filter(entry => entry.game_type === gameType);
-            }
-            
-            return history;
-        } catch (error) {
-            console.error('Error fetching game history:', error);
-            return [];
-        }
-    }
+
 
     /**
      * Update player name for an existing score

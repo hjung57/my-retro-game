@@ -1426,9 +1426,8 @@ function handleDirectionInput(direction) {
         messageEl.textContent = '';
         audioManager.playSound('gameStart');
     } else if (gameState === 'gameOver') {
-        init();
-        gameState = 'playing';
-        messageEl.textContent = '';
+        // Don't restart automatically - let the game over screen show
+        return;
     } else if (gameState === 'levelComplete') {
         currentLevel++;
         

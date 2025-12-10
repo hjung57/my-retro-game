@@ -59,9 +59,18 @@ get '/api/history' do
   json history
 end
 
-# Get top 10 high scores
+# Get top 10 high scores (optionally filtered by game type)
 get '/api/highscores' do
-  scores = DB[:high_scores]
+  game_type = params['game_type']
+  
+  query = DB[:high_scores]
+  
+  # Filter by game type if provided
+  if game_type && !game_type.empty?
+    query = query.where(game_type: game_type)
+  end
+  
+  scores = query
     .order(Sequel.desc(:score))
     .limit(10)
     .all
