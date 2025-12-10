@@ -98,81 +98,9 @@ get '/flappy-gator' do
   send_file File.join(settings.public_folder, 'flappy-gator', 'flappy-gator.html')
 end
 
-# Admin endpoint to download production database (remove in production if not needed)
-get '/admin/download-db' do
-  if ENV['RACK_ENV'] == 'production'
-    send_file 'game_scores_production.db', :filename => 'production_backup.db'
-  else
-    halt 404, "Not available in development"
-  end
-end
 
-# Admin endpoint to view all database records
-get '/admin/database' do
-  if ENV['RACK_ENV'] == 'production'
-    scores = DB[:high_scores].order(Sequel.desc(:timestamp)).all
-    content_type :json
-    json scores
-  else
-    halt 404, "Not available in development"
-  end
-end
 
-# Admin endpoint to force database migration
-post '/admin/migrate' do
-  if ENV['RACK_ENV'] == 'production'
-    begin
-      # Check current schema
-      column_info = DB.schema(:high_scores).find { |col| col[0] == :game_type }
-      has_default = column_info && column_info[1][:default]
-      allows_null = column_info && column_info[1][:allow_null] != false
-      
-      if has_default || allows_null
-        # Run the migration
-        puts "🔄 Force migrating production database..."
-        
-        # Update any NULL or empty game_type values
-        null_count = DB[:high_scores].where(game_type: nil).count
-        empty_count = DB[:high_scores].where(game_type: '').count
-        
-        if null_count > 0
-          DB[:high_scores].where(game_type: nil).update(game_type: 'pac-gator')
-        end
-        
-        if empty_count > 0
-          DB[:high_scores].where(game_type: '').update(game_type: 'pac-gator')
-        end
-        
-        # Recreate table with proper schema
-        DB.create_table :high_scores_backup do
-          primary_key :id
-          String :name, null: false
-          Integer :score, null: false
-          Integer :timestamp, null: false
-          String :game_type, null: false # No default, required
-          index :score
-          index :timestamp
-          index :game_type
-        end
-        
-        # Copy data
-        DB[:high_scores_backup].insert(DB[:high_scores].select(:id, :name, :score, :timestamp, :game_type))
-        
-        # Replace table
-        DB.drop_table :high_scores
-        DB.rename_table :high_scores_backup, :high_scores
-        
-        json({ success: true, message: "Migration completed successfully", updated_records: null_count + empty_count })
-      else
-        json({ success: true, message: "Database already migrated" })
-      end
-    rescue => e
-      json({ success: false, error: e.message })
-    end
-  else
-    halt 404, "Not available in development"
-  end
-end
+
 
 # Get game history (all sessions sorted by score descending)
 get '/api/history' do
