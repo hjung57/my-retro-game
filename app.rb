@@ -177,6 +177,16 @@ post '/api/highscores' do
   json success: true, isNewHighScore: is_new_high_score, id: score_id
 end
 
+# Temporary endpoint to reset flappy-gator scores (REMOVE AFTER USE)
+delete '/api/reset-flappy-scores' do
+  if ENV['RACK_ENV'] == 'production'
+    deleted_count = DB[:high_scores].where(game_type: 'flappy-gator').delete
+    json({ success: true, message: "Deleted #{deleted_count} flappy-gator scores" })
+  else
+    halt 404, "Not available in development"
+  end
+end
+
 # Update player name for an existing score
 put '/api/highscores/:id' do
   data = JSON.parse(request.body.read)
