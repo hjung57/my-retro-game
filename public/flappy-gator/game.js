@@ -10,11 +10,11 @@ class PipeGenerator {
         // Wall pair configuration
         this.pipeWidth = 60;                    // Width of each pipe/wall
         
-        // Gap size configuration
-        this.initialGapHeight = 150;            // Starting gap size (easier)
-        this.minGapHeight = 120;                // Minimum gap size (harder)
+        // Gap size configuration (using config values)
+        this.initialGapHeight = FLAPPY_CONFIG.INITIAL_PIPE_GAP;
+        this.minGapHeight = FLAPPY_CONFIG.MIN_PIPE_GAP;
         this.currentGapHeight = this.initialGapHeight;
-        this.gapShrinkRate = 0.5;               // Pixels to shrink per pipe passed
+        this.gapReductionRate = FLAPPY_CONFIG.GAP_REDUCTION_RATE;
         
         // Gap positioning boundaries
         this.minGapY = 100;                     // Minimum Y position for gap center
@@ -27,11 +27,11 @@ class PipeGenerator {
         this.currentSpawnInterval = this.initialSpawnInterval;
         this.spacingDecreaseRate = 1;           // Frames to decrease per pipe passed
         
-        // Wall movement speed
-        this.initialScrollSpeed = 2;            // Starting scroll speed (pixels/frame)
-        this.maxScrollSpeed = 4;                // Maximum scroll speed
+        // Wall movement speed (using config values)
+        this.initialScrollSpeed = FLAPPY_CONFIG.INITIAL_PIPE_SPEED;
+        this.maxScrollSpeed = FLAPPY_CONFIG.MAX_PIPE_SPEED;
         this.currentScrollSpeed = this.initialScrollSpeed;
-        this.speedIncreaseRate = 0.02;          // Speed increase per pipe passed
+        this.speedIncreaseRate = FLAPPY_CONFIG.SPEED_INCREASE_RATE;
         
         // Progressive difficulty tracking
         this.pipesPassed = 0;                   // Total pipes passed (for difficulty scaling)
@@ -123,37 +123,36 @@ class PipeGenerator {
     }
 
     /**
-     * Increase difficulty progressively
-     * Called when player successfully passes a pipe
+     * Update difficulty based on current score
+     * Called when player's score changes
+     */
+    updateDifficulty(currentScore) {
+        if (!this.difficultyEnabled) return;
+        
+        // Calculate new gap height based on score
+        const gapReduction = currentScore * this.gapReductionRate;
+        this.currentGapHeight = Math.max(
+            this.minGapHeight,
+            this.initialGapHeight - gapReduction
+        );
+        
+        // Calculate new speed based on score
+        const speedIncrease = currentScore * this.speedIncreaseRate;
+        this.currentScrollSpeed = Math.min(
+            this.maxScrollSpeed,
+            this.initialScrollSpeed + speedIncrease
+        );
+    }
+
+    /**
+     * Legacy method for backward compatibility
+     * Now calls updateDifficulty with pipes passed as score approximation
      */
     increaseDifficulty() {
         if (!this.difficultyEnabled) return;
-        
         this.pipesPassed++;
-        
-        // Decrease gap height (make it harder to fit through)
-        if (this.currentGapHeight > this.minGapHeight) {
-            this.currentGapHeight = Math.max(
-                this.minGapHeight,
-                this.currentGapHeight - this.gapShrinkRate
-            );
-        }
-        
-        // Decrease spawn interval (pipes appear more frequently)
-        if (this.currentSpawnInterval > this.minSpawnInterval) {
-            this.currentSpawnInterval = Math.max(
-                this.minSpawnInterval,
-                this.currentSpawnInterval - this.spacingDecreaseRate
-            );
-        }
-        
-        // Increase scroll speed (pipes move faster)
-        if (this.currentScrollSpeed < this.maxScrollSpeed) {
-            this.currentScrollSpeed = Math.min(
-                this.maxScrollSpeed,
-                this.currentScrollSpeed + this.speedIncreaseRate
-            );
-        }
+        // Use pipes passed as a rough score approximation for legacy calls
+        this.updateDifficulty(this.pipesPassed);
     }
 
     /**
@@ -161,12 +160,19 @@ class PipeGenerator {
      * @returns {Object} Current difficulty parameters
      */
     getDifficultyStats() {
+        // Calculate difficulty percentage based on gap reduction
+        const gapReduction = this.initialGapHeight - this.currentGapHeight;
+        const maxGapReduction = this.initialGapHeight - this.minGapHeight;
+        const difficultyPercent = Math.min(100, (gapReduction / maxGapReduction) * 100);
+        
         return {
             pipesPassed: this.pipesPassed,
             gapHeight: this.currentGapHeight,
             spawnInterval: this.currentSpawnInterval,
             scrollSpeed: this.currentScrollSpeed,
-            difficultyPercent: Math.min(100, (this.pipesPassed / 20) * 100)
+            difficultyPercent: difficultyPercent,
+            gapReduction: gapReduction,
+            maxGapReduction: maxGapReduction
         };
     }
 
@@ -207,6 +213,12 @@ class PipeGenerator {
     reset() {
         this.pipes = [];
         this.framesSinceLastSpawn = 0;
+        
+        // Reset difficulty to initial values
+        this.currentGapHeight = this.initialGapHeight;
+        this.currentScrollSpeed = this.initialScrollSpeed;
+        this.currentSpawnInterval = this.initialSpawnInterval;
+        this.pipesPassed = 0;
     }
 }
 
@@ -1664,6 +1676,9 @@ class FlappyGatorGame {
         // Calculate score with multiplier
         const earnedPoints = Math.floor(points * this.scoreMultiplier);
         this.score += earnedPoints;
+        
+        // Update difficulty based on new score
+        this.pipeGenerator.updateDifficulty(this.score);
         
         // Update combo counter
         this.comboCounter++;

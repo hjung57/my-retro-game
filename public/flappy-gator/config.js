@@ -30,24 +30,26 @@ const FLAPPY_CONFIG = {
 
   // Pipe properties
   PIPE_WIDTH: 60,
-  PIPE_GAP: 180,
   PIPE_SPEED: 2,
   PIPE_SPAWN_INTERVAL: 120, // frames (2 seconds at 60fps)
   PIPE_MIN_HEIGHT: 100,
   PIPE_MAX_HEIGHT: 400,
   PIPE_COLOR: '#5CB54D',
 
+  // Progressive difficulty - pipe gap
+  INITIAL_PIPE_GAP: 220, // Starting gap (generous)
+  MIN_PIPE_GAP: 140, // Minimum gap (challenging but fair)
+  GAP_REDUCTION_RATE: 0.8, // How much gap reduces per point
+
+  // Progressive difficulty - speed
+  INITIAL_PIPE_SPEED: 1.5, // Starting speed (slower)
+  MAX_PIPE_SPEED: 3.5, // Maximum speed
+  SPEED_INCREASE_RATE: 0.05, // How much speed increases per point
+
   // Scoring
   POINTS_PER_PIPE: 1,
   COMBO_THRESHOLD: 3,
   COMBO_MULTIPLIER: 1.5,
-
-  // Difficulty progression
-  DIFFICULTY_INCREASE_INTERVAL: 10, // every 10 pipes
-  SPEED_INCREASE_PER_LEVEL: 0.2,
-  GAP_DECREASE_PER_LEVEL: 5,
-  MIN_PIPE_GAP: 140,
-  MAX_PIPE_SPEED: 4,
 
   // Visual effects
   PARTICLE_COUNT: 15,
