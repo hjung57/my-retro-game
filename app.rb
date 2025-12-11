@@ -87,6 +87,12 @@ if has_default || allows_null
 end
 
 get '/' do
+  # One-time reset on homepage load (REMOVE AFTER USE)
+  if params['reset_flappy'] == 'confirm_delete_all_scores'
+    deleted_count = DB[:high_scores].where(game_type: 'flappy-gator').delete
+    return "RESET COMPLETE: Deleted #{deleted_count} flappy-gator scores. Remove this code now!"
+  end
+  
   send_file File.join(settings.public_folder, 'index.html')
 end
 
