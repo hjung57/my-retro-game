@@ -177,11 +177,33 @@ post '/api/highscores' do
   json success: true, isNewHighScore: is_new_high_score, id: score_id
 end
 
+# Test endpoint to verify deployment
+get '/api/test-deployment' do
+  json({ status: "deployed", rack_env: ENV['RACK_ENV'], timestamp: Time.now.to_i })
+end
+
 # Temporary endpoint to reset flappy-gator scores (REMOVE AFTER USE)
 delete '/api/reset-flappy-scores' do
   if ENV['RACK_ENV'] == 'production'
+    # Get stats before deletion
+    flappy_scores = DB[:high_scores].where(game_type: 'flappy-gator')
+    count = flappy_scores.count
+    high_score = count > 0 ? flappy_scores.max(:score) : 0
+    avg_score = count > 0 ? flappy_scores.avg(:score).round(1) : 0
+    
+    # Delete all flappy-gator scores
     deleted_count = DB[:high_scores].where(game_type: 'flappy-gator').delete
-    json({ success: true, message: "Deleted #{deleted_count} flappy-gator scores" })
+    
+    json({ 
+      success: true, 
+      message: "Reset complete",
+      deleted_count: deleted_count,
+      previous_stats: {
+        high_score: high_score,
+        games_played: count,
+        average_score: avg_score
+      }
+    })
   else
     halt 404, "Not available in development"
   end
