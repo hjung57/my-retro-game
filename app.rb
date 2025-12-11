@@ -182,31 +182,46 @@ get '/api/test-deployment' do
   json({ status: "deployed", rack_env: ENV['RACK_ENV'], timestamp: Time.now.to_i })
 end
 
+# GET version of reset for easier testing
+get '/api/reset-flappy-scores-preview' do
+  flappy_scores = DB[:high_scores].where(game_type: 'flappy-gator')
+  count = flappy_scores.count
+  high_score = count > 0 ? flappy_scores.max(:score) : 0
+  avg_score = count > 0 ? flappy_scores.avg(:score).round(1) : 0
+  
+  json({ 
+    message: "Preview - would delete #{count} scores",
+    rack_env: ENV['RACK_ENV'],
+    current_stats: {
+      high_score: high_score,
+      games_played: count,
+      average_score: avg_score
+    }
+  })
+end
+
 # Temporary endpoint to reset flappy-gator scores (REMOVE AFTER USE)
 delete '/api/reset-flappy-scores' do
-  if ENV['RACK_ENV'] == 'production'
-    # Get stats before deletion
-    flappy_scores = DB[:high_scores].where(game_type: 'flappy-gator')
-    count = flappy_scores.count
-    high_score = count > 0 ? flappy_scores.max(:score) : 0
-    avg_score = count > 0 ? flappy_scores.avg(:score).round(1) : 0
-    
-    # Delete all flappy-gator scores
-    deleted_count = DB[:high_scores].where(game_type: 'flappy-gator').delete
-    
-    json({ 
-      success: true, 
-      message: "Reset complete",
-      deleted_count: deleted_count,
-      previous_stats: {
-        high_score: high_score,
-        games_played: count,
-        average_score: avg_score
-      }
-    })
-  else
-    halt 404, "Not available in development"
-  end
+  # Get stats before deletion
+  flappy_scores = DB[:high_scores].where(game_type: 'flappy-gator')
+  count = flappy_scores.count
+  high_score = count > 0 ? flappy_scores.max(:score) : 0
+  avg_score = count > 0 ? flappy_scores.avg(:score).round(1) : 0
+  
+  # Delete all flappy-gator scores
+  deleted_count = DB[:high_scores].where(game_type: 'flappy-gator').delete
+  
+  json({ 
+    success: true, 
+    message: "Reset complete",
+    deleted_count: deleted_count,
+    rack_env: ENV['RACK_ENV'],
+    previous_stats: {
+      high_score: high_score,
+      games_played: count,
+      average_score: avg_score
+    }
+  })
 end
 
 # Update player name for an existing score
