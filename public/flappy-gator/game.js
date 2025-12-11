@@ -520,7 +520,7 @@ class CollisionDetector {
  * Manages game states, transitions, and persistent data
  */
 class GameStateManager {
-    constructor() {
+    constructor(apiClient) {
         // Available game states
         this.STATES = {
             MENU: 'menu',           // Main menu with high scores
@@ -537,17 +537,14 @@ class GameStateManager {
         this.stateHistory = [];
         this.maxHistoryLength = 10;
         
-        // Persistent data
-        this.persistentData = {
-            highScore: 0,
-            totalGamesPlayed: 0,
-            totalScore: 0,
-            bestStreak: 0,
-            lastPlayedDate: null
-        };
+        // API client for database operations
+        this.apiClient = apiClient;
         
-        // Load persistent data from localStorage
-        this.loadPersistentData();
+        // Current session data (no longer persistent)
+        this.sessionData = {
+            currentStreak: 0,
+            sessionStartTime: Date.now()
+        };
     }
 
     /**
@@ -602,86 +599,56 @@ class GameStateManager {
     }
 
     /**
-     * Update high score if current score is higher
+     * Update session streak
      * @param {number} score - Current score
-     * @returns {boolean} True if new high score
      */
-    updateHighScore(score) {
-        if (score > this.persistentData.highScore) {
-            this.persistentData.highScore = score;
-            this.savePersistentData();
-            return true;
+    updateSessionStreak(score) {
+        if (score > this.sessionData.currentStreak) {
+            this.sessionData.currentStreak = score;
         }
-        return false;
     }
 
     /**
-     * Record game completion
-     * @param {number} score - Final score
+     * Get statistics from database
+     * @returns {Promise<Object>} Statistics from database
      */
-    recordGameCompletion(score) {
-        this.persistentData.totalGamesPlayed++;
-        this.persistentData.totalScore += score;
-        this.persistentData.lastPlayedDate = new Date().toISOString();
-        
-        // Update best streak if applicable
-        if (score > this.persistentData.bestStreak) {
-            this.persistentData.bestStreak = score;
-        }
-        
-        this.savePersistentData();
-    }
-
-    /**
-     * Get persistent statistics
-     * @returns {Object} Statistics
-     */
-    getStats() {
-        return {
-            ...this.persistentData,
-            averageScore: this.persistentData.totalGamesPlayed > 0 
-                ? Math.floor(this.persistentData.totalScore / this.persistentData.totalGamesPlayed)
-                : 0
-        };
-    }
-
-    /**
-     * Save persistent data to localStorage
-     */
-    savePersistentData() {
+    async getStats() {
         try {
-            localStorage.setItem('flappyGator_persistentData', JSON.stringify(this.persistentData));
-        } catch (error) {
-            console.error('Error saving persistent data:', error);
-        }
-    }
-
-    /**
-     * Load persistent data from localStorage
-     */
-    loadPersistentData() {
-        try {
-            const saved = localStorage.getItem('flappyGator_persistentData');
-            if (saved) {
-                this.persistentData = { ...this.persistentData, ...JSON.parse(saved) };
+            // Get stats from dedicated stats endpoint (includes ALL scores)
+            console.log('Fetching stats from /api/stats?game_type=flappy-gator');
+            const response = await fetch('/api/stats?game_type=flappy-gator');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
+            
+            const stats = await response.json();
+            console.log('Received stats:', stats);
+            return stats;
         } catch (error) {
-            console.error('Error loading persistent data:', error);
+            console.error('Error getting stats from database:', error);
+            return {
+                highScore: 0,
+                totalGamesPlayed: 0,
+                totalScore: 0,
+                averageScore: 0
+            };
         }
     }
 
     /**
-     * Reset all persistent data
+     * Check if score is a new high score
+     * @param {number} score - Current score
+     * @returns {Promise<boolean>} True if new high score
      */
-    resetPersistentData() {
-        this.persistentData = {
-            highScore: 0,
-            totalGamesPlayed: 0,
-            totalScore: 0,
-            bestStreak: 0,
-            lastPlayedDate: null
-        };
-        this.savePersistentData();
+    async checkNewHighScore(score) {
+        try {
+            const stats = await this.getStats();
+            return score > stats.highScore;
+        } catch (error) {
+            console.error('Error checking high score:', error);
+            return false;
+        }
     }
 
     /**
@@ -716,7 +683,7 @@ class FlappyGatorGame {
         this.scale = 1;
         
         // Enhanced state management
-        this.stateManager = new GameStateManager();
+        this.stateManager = new GameStateManager(this.apiClient);
         
         // Legacy state property (for backward compatibility)
         this.state = 'start'; // 'start', 'playing', 'paused', 'gameOver'
@@ -844,7 +811,7 @@ class FlappyGatorGame {
     /**
      * Initialize game state
      */
-    init() {
+    async init() {
         // Clean up any dynamically created elements first
         this.cleanupDynamicElements();
         
@@ -885,11 +852,10 @@ class FlappyGatorGame {
             this.collisionDetector.reset();
         }
         
-        // Load high score
-        this.loadHighScore();
+
         
         // Set up UI
-        this.updateUI();
+        await this.updateUI();
         
         // Start the game loop for rendering (even in start state)
         if (!this.animationFrameId) {
@@ -900,10 +866,10 @@ class FlappyGatorGame {
     /**
      * Start the game (transition from start to playing)
      */
-    start() {
+    async start() {
         if (this.state === 'start') {
             this.state = 'playing';
-            this.updateUI();
+            await this.updateUI();
             
             // Start game loop if not already running
             if (!this.animationFrameId) {
@@ -915,7 +881,7 @@ class FlappyGatorGame {
     /**
      * Restart the game (reset and start playing)
      */
-    restart() {
+    async restart() {
         // Clean up dynamically created elements
         this.cleanupDynamicElements();
         
@@ -957,7 +923,7 @@ class FlappyGatorGame {
         
         // Transition to playing state
         this.state = 'playing';
-        this.updateUI();
+        await this.updateUI();
         
         // Update score display to show 0
         this.updateScoreDisplay();
@@ -1325,13 +1291,10 @@ class FlappyGatorGame {
      * Update UI elements with enhanced state management
      * @param {boolean} isNewHighScore - Whether a new high score was achieved
      */
-    updateUI(isNewHighScore = false) {
+    async updateUI(isNewHighScore = false) {
         const startScreen = document.getElementById('start-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
         const scoreDisplay = document.getElementById('score-display');
-        
-        // Get statistics from state manager
-        const stats = this.stateManager.getStats();
         
         // Show/hide screens based on state
         if (this.state === 'start') {
@@ -1340,11 +1303,16 @@ class FlappyGatorGame {
             scoreDisplay.style.display = 'none';
             this.canvas.style.display = 'none';
             
-            // Update start screen with statistics
-            document.getElementById('start-high-score-value').textContent = stats.highScore;
-            
-            // Add statistics display if elements exist
-            this.updateMenuStats(stats);
+            // Get statistics from database and update UI
+            try {
+                const stats = await this.stateManager.getStats();
+                document.getElementById('start-high-score-value').textContent = stats.highScore;
+                this.updateMenuStats(stats);
+            } catch (error) {
+                console.error('Error loading stats for menu:', error);
+                // Show default values on error
+                document.getElementById('start-high-score-value').textContent = '0';
+            }
         } else if (this.state === 'playing') {
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
@@ -1361,15 +1329,18 @@ class FlappyGatorGame {
                 finalScoreElement.textContent = this.score;
             }
             
-            // High score display removed (now shown in leaderboard)
-            
             // Show new high score indicator
             if (isNewHighScore) {
                 this.showNewHighScoreIndicator();
             }
             
-            // Update game over statistics
-            this.updateGameOverStats(stats);
+            // Update game over statistics from database
+            try {
+                const stats = await this.stateManager.getStats();
+                this.updateGameOverStats(stats);
+            } catch (error) {
+                console.error('Error loading stats for game over screen:', error);
+            }
         }
     }
 
@@ -1521,20 +1492,7 @@ class FlappyGatorGame {
         `;
     }
 
-    /**
-     * Load high score from API
-     */
-    async loadHighScore() {
-        try {
-            const scores = await this.apiClient.getHighScores('flappy-gator');
-            if (scores && scores.length > 0) {
-                this.highScore = Math.max(...scores.map(s => s.score));
-            }
-        } catch (error) {
-            console.error('Error loading high score:', error);
-            this.highScore = 0;
-        }
-    }
+
 
     /**
      * Pause the game
@@ -1614,7 +1572,7 @@ class FlappyGatorGame {
     /**
      * Return to main menu
      */
-    returnToMenu() {
+    async returnToMenu() {
         // Clean up dynamically created elements
         this.cleanupDynamicElements();
         
@@ -1631,8 +1589,8 @@ class FlappyGatorGame {
             this.animationFrameId = null;
         }
         
-        // Reset game
-        this.init();
+        // Reset game and refresh stats
+        await this.init();
     }
 
     /**
@@ -1675,18 +1633,16 @@ class FlappyGatorGame {
             pipesPassed: this.pipeGenerator.pipesPassed
         });
         
-        // Record game completion
-        this.stateManager.recordGameCompletion(this.score);
-        
-        // Check for new high score
-        const isNewHighScore = this.stateManager.updateHighScore(this.score);
+        // Update session streak
+        this.stateManager.updateSessionStreak(this.score);
         
         // Play collision sound effect with custom volume
         this.audioManager.playSound('collision', this.soundVolumes?.collision || 0.7);
         
-        // Save session first, then show game over screen with updated leaderboard (copied from pac-gator)
-        this.saveGameSession().then(() => {
-            this.updateUI(isNewHighScore);
+        // Save session first, then show game over screen with updated leaderboard
+        this.saveGameSession().then(async (saveResult) => {
+            const isNewHighScore = saveResult && saveResult.isNewHighScore;
+            await this.updateUI(isNewHighScore);
             loadLeaderboard('game-over-leaderboard-list');
         });
     }
@@ -1870,7 +1826,7 @@ window.addEventListener('beforeunload', () => {
 });
 
 // Initialize game when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Prevent multiple game instances
     if (gameInstance) {
         console.warn('Game instance already exists, cleaning up...');
@@ -1888,7 +1844,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const game = gameInstance;
     
     // Initialize game
-    game.init();
+    await game.init();
     
     // Render gator preview on start screen
     const previewCanvas = document.getElementById('gatorPreviewCanvas');
@@ -1935,22 +1891,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const pauseMenuButton = document.getElementById('pause-menu-button');
     
     if (startButton) {
-        startButton.addEventListener('click', () => {
-            game.start();
+        startButton.addEventListener('click', async () => {
+            await game.start();
         });
     }
     
     if (restartButton) {
-        restartButton.addEventListener('click', () => {
-            game.restart();
+        restartButton.addEventListener('click', async () => {
+            await game.restart();
         });
     }
     
     if (backToMenuButton) {
-        backToMenuButton.addEventListener('click', () => {
+        backToMenuButton.addEventListener('click', async () => {
             // Return to game's start screen
             if (gameInstance) {
-                gameInstance.returnToMenu();
+                await gameInstance.returnToMenu();
             }
         });
     }
@@ -2100,15 +2056,15 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseRestartButton.addEventListener('click', () => {
             if (gameInstance) {
                 gameInstance.resume(); // Resume first to hide pause menu
-                setTimeout(() => gameInstance.restart(), 100);
+                setTimeout(async () => await gameInstance.restart(), 100);
             }
         });
     }
     
     if (pauseMenuButton) {
-        pauseMenuButton.addEventListener('click', () => {
+        pauseMenuButton.addEventListener('click', async () => {
             if (gameInstance) {
-                gameInstance.returnToMenu();
+                await gameInstance.returnToMenu();
             }
         });
     }

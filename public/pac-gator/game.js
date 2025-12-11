@@ -44,6 +44,7 @@ let powerPelletTimer = 0;
 let isPaused = false;
 let waitingForRespawn = false;
 let deathAnimationTimer = 0;
+let gameOverTransition = false; // Flag to prevent input during game over transition
 let soundEnabled = true;
 let musicEnabled = true;
 let difficulty = 'normal';
@@ -213,6 +214,7 @@ function init() {
     endlessMode = false;
     randomDotTimer = 0;
     currentScoreId = null; // Reset score ID for new game
+    gameOverTransition = false; // Reset game over transition flag
     updateUI();
     loadHighScore();
 }
@@ -631,6 +633,7 @@ function checkCollisions() {
                 
                 if (lives <= 0) {
                     gameState = 'gameOver';
+                    gameOverTransition = true; // Prevent input during transition
                     // Save session will be called after animation
                 }
             }
@@ -1287,6 +1290,12 @@ document.addEventListener('keydown', (e) => {
             e.preventDefault();
         }
     } else if (gameState === 'gameOver') {
+        // Don't allow restart during game over transition
+        if (gameOverTransition) {
+            e.preventDefault();
+            return;
+        }
+        
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
             init();
             gameState = 'playing';
@@ -1733,6 +1742,9 @@ function showSettings() {
 }
 
 async function showGameOver() {
+    // Clear transition flag - now safe to accept input
+    gameOverTransition = false;
+    
     // Display final score
     document.getElementById('finalScore').textContent = score;
     

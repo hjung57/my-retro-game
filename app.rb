@@ -87,12 +87,6 @@ if has_default || allows_null
 end
 
 get '/' do
-  # One-time reset on homepage load (REMOVE AFTER USE)
-  if params['reset_flappy'] == 'confirm_delete_all_scores'
-    deleted_count = DB[:high_scores].where(game_type: 'flappy-gator').delete
-    return "RESET COMPLETE: Deleted #{deleted_count} flappy-gator scores. Remove this code now!"
-  end
-  
   send_file File.join(settings.public_folder, 'index.html')
 end
 
@@ -103,10 +97,6 @@ end
 get '/flappy-gator' do
   send_file File.join(settings.public_folder, 'flappy-gator', 'flappy-gator.html')
 end
-
-
-
-
 
 # Get game history (all sessions sorted by score descending)
 get '/api/history' do
@@ -133,6 +123,41 @@ get '/api/highscores' do
     .limit(10)
     .all
   json scores
+end
+
+# Get all scores for stats calculation (no limit)
+get '/api/stats' do
+  game_type = params['game_type']
+  
+  if game_type.nil? || game_type.empty?
+    halt 400, json({ error: 'game_type parameter is required' })
+  end
+  
+  # Get all scores for the game type
+  all_scores = DB[:high_scores]
+    .where(game_type: game_type)
+    .all
+  
+  if all_scores.empty?
+    json({
+      highScore: 0,
+      totalGamesPlayed: 0,
+      totalScore: 0,
+      averageScore: 0
+    })
+  else
+    total_score = all_scores.sum { |score| score[:score] }
+    high_score = all_scores.max_by { |score| score[:score] }[:score]
+    games_played = all_scores.length
+    average_score = (total_score.to_f / games_played).round(1)
+    
+    json({
+      highScore: high_score,
+      totalGamesPlayed: games_played,
+      totalScore: total_score,
+      averageScore: average_score
+    })
+  end
 end
 
 # Save a new game session
@@ -188,7 +213,12 @@ get '/api/test-deployment' do
   json({ status: "deployed", rack_env: ENV['RACK_ENV'], timestamp: Time.now.to_i })
 end
 
-# GET version of reset for easier testing
+# Admin route to serve admin dashboard
+get '/admin' do
+  send_file File.join(settings.public_folder, 'admin.html')
+end
+
+# Preview endpoints for admin dashboard
 get '/api/reset-flappy-scores-preview' do
   flappy_scores = DB[:high_scores].where(game_type: 'flappy-gator')
   count = flappy_scores.count
@@ -206,7 +236,24 @@ get '/api/reset-flappy-scores-preview' do
   })
 end
 
-# Temporary endpoint to reset flappy-gator scores (REMOVE AFTER USE)
+get '/api/reset-pac-scores-preview' do
+  pac_scores = DB[:high_scores].where(game_type: 'pac-gator')
+  count = pac_scores.count
+  high_score = count > 0 ? pac_scores.max(:score) : 0
+  avg_score = count > 0 ? pac_scores.avg(:score).round(1) : 0
+  
+  json({ 
+    message: "Preview - would delete #{count} scores",
+    rack_env: ENV['RACK_ENV'],
+    current_stats: {
+      high_score: high_score,
+      games_played: count,
+      average_score: avg_score
+    }
+  })
+end
+
+# Admin endpoints to reset scores (REMOVE AFTER USE)
 delete '/api/reset-flappy-scores' do
   # Get stats before deletion
   flappy_scores = DB[:high_scores].where(game_type: 'flappy-gator')
@@ -216,6 +263,29 @@ delete '/api/reset-flappy-scores' do
   
   # Delete all flappy-gator scores
   deleted_count = DB[:high_scores].where(game_type: 'flappy-gator').delete
+  
+  json({ 
+    success: true, 
+    message: "Reset complete",
+    deleted_count: deleted_count,
+    rack_env: ENV['RACK_ENV'],
+    previous_stats: {
+      high_score: high_score,
+      games_played: count,
+      average_score: avg_score
+    }
+  })
+end
+
+delete '/api/reset-pac-scores' do
+  # Get stats before deletion
+  pac_scores = DB[:high_scores].where(game_type: 'pac-gator')
+  count = pac_scores.count
+  high_score = count > 0 ? pac_scores.max(:score) : 0
+  avg_score = count > 0 ? pac_scores.avg(:score).round(1) : 0
+  
+  # Delete all pac-gator scores
+  deleted_count = DB[:high_scores].where(game_type: 'pac-gator').delete
   
   json({ 
     success: true, 

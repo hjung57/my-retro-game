@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Admin Dashboard</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            color: #5CB54D;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px rgba(92, 181, 77, 0.3);
+        }
+
+        .game-section {
+            background: #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #5CB54D;
+        }
+
+        .game-title {
+            color: #5CB54D;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #444;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #aaa;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #5CB54D;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .admin-button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+
+        .admin-button:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        }
+
+        .admin-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .preview-button {
+            background: #6c757d;
+            margin-right: 10px;
+        }
+
+        .preview-button:hover {
+            background: #5a6268;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .status-success {
+            background: rgba(92, 181, 77, 0.2);
+            border: 1px solid #5CB54D;
+            color: #5CB54D;
+        }
+
+        .status-error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .environment-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .env-production {
+            background: #dc3545;
+            color: white;
+        }
+
+        .env-development {
+            background: #28a745;
+            color: white;
+        }
+
+        .warning {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid #ffc107;
+            color: #ffc107;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Game Admin Dashboard</h1>
+        
+        <div class="warning">
+            ⚠️ <strong>Warning:</strong> These actions will permanently delete game data. Use with caution!
+        </div>
+
+        <div id="environment-info" class="game-section">
+            <div class="game-title">
+                🌍 Environment Info
+                <span id="env-badge" class="environment-badge">Loading...</span>
+            </div>
+            <div id="env-details">Loading environment information...</div>
+        </div>
+
+        <div class="game-section">
+            <div class="game-title">🐊 Flappy Gator</div>
+            <div class="stats" id="flappy-stats">
+                <div class="stat-card">
+                    <div class="stat-label">High Score</div>
+                    <div class="stat-value" id="flappy-high-score">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Games Played</div>
+                    <div class="stat-value" id="flappy-games-played">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Average Score</div>
+                    <div class="stat-value" id="flappy-avg-score">-</div>
+                </div>
+            </div>
+            <button class="admin-button preview-button" onclick="previewFlappyReset()">Preview Reset</button>
+            <button class="admin-button" onclick="resetFlappyScores()">Clear All Flappy Gator Scores</button>
+            <div id="flappy-status" class="status-message"></div>
+        </div>
+
+        <div class="game-section">
+            <div class="game-title">👻 Pac Gator</div>
+            <div class="stats" id="pac-stats">
+                <div class="stat-card">
+                    <div class="stat-label">High Score</div>
+                    <div class="stat-value" id="pac-high-score">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Games Played</div>
+                    <div class="stat-value" id="pac-games-played">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Average Score</div>
+                    <div class="stat-value" id="pac-avg-score">-</div>
+                </div>
+            </div>
+            <button class="admin-button preview-button" onclick="previewPacReset()">Preview Reset</button>
+            <button class="admin-button" onclick="resetPacScores()">Clear All Pac Gator Scores</button>
+            <div id="pac-status" class="status-message"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentEnvironment = 'unknown';
+
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEnvironmentInfo();
+            loadGameStats();
+        });
+
+        async function loadEnvironmentInfo() {
+            try {
+                const response = await fetch('/api/test-deployment');
+                const data = await response.json();
+                
+                currentEnvironment = data.rack_env || 'development';
+                const envBadge = document.getElementById('env-badge');
+                const envDetails = document.getElementById('env-details');
+                
+                envBadge.textContent = currentEnvironment.toUpperCase();
+                envBadge.className = `environment-badge env-${currentEnvironment}`;
+                
+                envDetails.innerHTML = `
+                    <strong>Environment:</strong> ${currentEnvironment}<br>
+                    <strong>Last Deployment:</strong> ${new Date(data.timestamp * 1000).toLocaleString()}
+                `;
+            } catch (error) {
+                console.error('Failed to load environment info:', error);
+                document.getElementById('env-details').textContent = 'Failed to load environment information';
+            }
+        }
+
+        async function loadGameStats() {
+            await Promise.all([
+                loadFlappyStats(),
+                loadPacStats()
+            ]);
+        }
+
+        async function loadFlappyStats() {
+            try {
+                const response = await fetch('/api/highscores?game_type=flappy-gator');
+                const scores = await response.json();
+                
+                const highScore = scores.length > 0 ? Math.max(...scores.map(s => s.score)) : 0;
+                const gamesPlayed = scores.length;
+                const avgScore = gamesPlayed > 0 ? (scores.reduce((sum, s) => sum + s.score, 0) / gamesPlayed).toFixed(1) : 0;
+                
+                document.getElementById('flappy-high-score').textContent = highScore.toLocaleString();
+                document.getElementById('flappy-games-played').textContent = gamesPlayed.toLocaleString();
+                document.getElementById('flappy-avg-score').textContent = avgScore;
+            } catch (error) {
+                console.error('Failed to load Flappy Gator stats:', error);
+                showStatus('flappy-status', 'Failed to load stats', 'error');
+            }
+        }
+
+        async function loadPacStats() {
+            try {
+                const response = await fetch('/api/highscores?game_type=pac-gator');
+                const scores = await response.json();
+                
+                const highScore = scores.length > 0 ? Math.max(...scores.map(s => s.score)) : 0;
+                const gamesPlayed = scores.length;
+                const avgScore = gamesPlayed > 0 ? (scores.reduce((sum, s) => sum + s.score, 0) / gamesPlayed).toFixed(1) : 0;
+                
+                document.getElementById('pac-high-score').textContent = highScore.toLocaleString();
+                document.getElementById('pac-games-played').textContent = gamesPlayed.toLocaleString();
+                document.getElementById('pac-avg-score').textContent = avgScore;
+            } catch (error) {
+                console.error('Failed to load Pac Gator stats:', error);
+                showStatus('pac-status', 'Failed to load stats', 'error');
+            }
+        }
+
+        async function previewFlappyReset() {
+            try {
+                const response = await fetch('/api/reset-flappy-scores-preview');
+                const data = await response.json();
+                
+                showStatus('flappy-status', 
+                    `Preview: Would delete ${data.current_stats.games_played} scores (High: ${data.current_stats.high_score}, Avg: ${data.current_stats.average_score})`, 
+                    'success'
+                );
+            } catch (error) {
+                showStatus('flappy-status', 'Failed to preview reset', 'error');
+            }
+        }
+
+        async function previewPacReset() {
+            try {
+                const response = await fetch('/api/reset-pac-scores-preview');
+                const data = await response.json();
+                
+                showStatus('pac-status', 
+                    `Preview: Would delete ${data.current_stats.games_played} scores (High: ${data.current_stats.high_score}, Avg: ${data.current_stats.average_score})`, 
+                    'success'
+                );
+            } catch (error) {
+                showStatus('pac-status', 'Failed to preview reset', 'error');
+            }
+        }
+
+        async function resetFlappyScores() {
+            if (!confirm(`Are you sure you want to delete ALL Flappy Gator scores in ${currentEnvironment}? This cannot be undone!`)) {
+                return;
+            }
+
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = 'Clearing...';
+            
+            try {
+                const response = await fetch('/api/reset-flappy-scores', {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showStatus('flappy-status', 
+                        `✅ Successfully deleted ${data.deleted_count} Flappy Gator scores`, 
+                        'success'
+                    );
+                    await loadFlappyStats(); // Refresh stats
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showStatus('flappy-status', `❌ Failed to reset scores: ${error.message}`, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Clear All Flappy Gator Scores';
+            }
+        }
+
+        async function resetPacScores() {
+            if (!confirm(`Are you sure you want to delete ALL Pac Gator scores in ${currentEnvironment}? This cannot be undone!`)) {
+                return;
+            }
+
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = 'Clearing...';
+            
+            try {
+                const response = await fetch('/api/reset-pac-scores', {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showStatus('pac-status', 
+                        `✅ Successfully deleted ${data.deleted_count} Pac Gator scores`, 
+                        'success'
+                    );
+                    await loadPacStats(); // Refresh stats
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showStatus('pac-status', `❌ Failed to reset scores: ${error.message}`, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Clear All Pac Gator Scores';
+            }
+        }
+
+
+
+        function showStatus(elementId, message, type) {
+            const statusEl = document.getElementById(elementId);
+            statusEl.textContent = message;
+            statusEl.className = `status-message status-${type}`;
+            statusEl.style.display = 'block';
+            
+            // Auto-hide after 5 seconds for success messages
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>
